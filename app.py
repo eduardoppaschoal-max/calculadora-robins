@@ -323,7 +323,7 @@ else:
         # PERGUNTA 1.1
         help_1_1 = """
         Métodos apropriados para controlar fatores de confusão variáveis no tempo ('métodos g') incluem aqueles baseados na ponderação por probabilidade inversa. 
-        Modelos de regressão padrão que incluem fatores de confusão variáveis no tempo podem ser problemáticos quando esses fatores são afetados por intervenções anteriores (fenômeno também conhecido como retroalimentação tratamento-fator de confusão).
+        Modelos de regressão padrão que incluem fatores de confusão variáveis no tempo podem ser problemáticos quando esses fatores são afetados por intervenções anteriores.
         """
         q1_1 = st.selectbox(
             "1.1 Os autores utilizaram um método de análise apropriado para controlar os fatores de confusão variáveis ao longo do tempo, bem como os fatores de confusão basais?", 
@@ -331,10 +331,11 @@ else:
             help=help_1_1
         )
 
-        # PERGUNTA 1.5 (Sempre visível)
+        # PERGUNTA 1.5 (Sempre visível, pois é crucial para a maioria dos caminhos)
         help_1_5 = """
-        A utilização de um "controle negativo" – a exploração de uma análise alternativa na qual nenhuma associação deveria ser observada – pode, por vezes, sugerir que o resultado está sujeito a fatores de confusão não controlados, caso sejam identificadas associações semelhantes para o resultado que está sendo avaliado e para o controle negativo.
-        Se o estudo não utilizou controles negativos e nenhuma outra consideração sugere fatores de confusão não controlados, responda 'N'. Responda 'S' ou 'PP' se os controles negativos indicarem que o resultado avaliado sofre de viés material devido a fatores de confusão.
+        A utilização de um "controle negativo" pode sugerir fatores de confusão não controlados.
+        - N: Não houve sinal de viés (ou não foi feito).
+        - Y/PY: Controles negativos indicaram viés.
         """
         q1_5 = st.selectbox(
             "1.5 O uso de controles negativos, ou outras considerações, sugeriu a presença de fatores de confusão não controlados significativos?", 
@@ -348,14 +349,12 @@ else:
         q1_3 = "NA"
         q1_4 = "NA"
 
-        # Regra de 1.2: Aparece somente se Y/PY para 1.1
+        # Caminho Método Adequado (Y/PY)
         if q1_1 in ["Y", "PY"]:
             help_1_2 = """
-            Os principais fatores de confusão são aqueles especificados na seção "Considerações preliminares sobre fatores de confusão". 
-            A avaliação deve incluir fatores basais e variáveis no tempo. A falha em controlar fatores importantes pode levar a viés.
-            - Y/PY ('S'/'PP'): Todos controlados.
-            - WN: Maioria controlada, viés residual pouco provável (ex: fatores não controlados correlacionados com os controlados).
-            - SN: Fator importante não controlado com provável impacto significativo.
+            - Y/PY: Todos fatores importantes (basais e variáveis no tempo) controlados.
+            - WN: Maioria controlada, viés residual provável é pequeno.
+            - SN: Fator importante não controlado.
             """
             q1_2 = st.selectbox(
                 "1.2 Os autores controlaram todos os importantes fatores de confusão basais e variáveis ao longo do tempo para os quais isso era necessário?",
@@ -363,22 +362,20 @@ else:
                 help=help_1_2
             )
 
-            # Regra de 1.3: Aparece somente se Y/PY/WN para 1.2
+            # 1.3 só aparece se 1.2 não foi uma falha total
             if q1_2 in ["Y", "PY", "WN"]:
-                help_1_3 = """
-                O controle adequado exige medidas válidas e confiáveis. 
-                Se os autores controlarem as variáveis sem indicar validade/confiabilidade, avalie a subjetividade.
-                """
                 q1_3 = st.selectbox(
                     "1.3 Os fatores de confusão que foram controlados foram medidos de forma válida e confiável?",
                     ["Selecione...", "NA", "Y", "PY", "WN", "SN", "NI"],
-                    help=help_1_3
+                    help="Se a validade/confiabilidade não for citada, avalie a subjetividade."
                 )
         
-        # Regra de 1.4: Aparece somente se N/PN/NI para 1.1
+        # Caminho Método Inadequado (N/PN/NI)
         elif q1_1 in ["N", "PN", "NI"]:
             help_1_4 = """
-            Essa questão surge quando um método de análise inadequado é utilizado. O controle de fatores variáveis no tempo medidos APÓS o início da intervenção provavelmente levará a viés (viés de colisor ou seleção).
+            Verificação de Viés de Colisor.
+            - Y/PY: Controlaram variáveis pós-intervenção em método padrão (CRÍTICO).
+            - N/PN: Não controlaram (Sério, mas evita colisor).
             """
             q1_4 = st.selectbox(
                 "1.4 Os autores controlaram fatores que variam ao longo do tempo ou outras variáveis medidas após o início da intervenção?",
@@ -389,127 +386,77 @@ else:
     d1_risk = "PENDENTE"
     d1_reason = "Aguardando respostas..."
 
-    # --- ALGORITMO DE DECISÃO (VARIANTE B) ---
-    # Verifica se as perguntas visíveis foram respondidas
-    inputs_ready = False
-    if q1_1 != "Selecione..." and q1_5 != "Selecione...":
-        if q1_1 in ["Y", "PY"]:
-             if q1_2 != "Selecione...":
-                 if q1_2 in ["Y", "PY", "WN"]:
-                     # Se 1.2 habilitou 1.3, verifica se 1.3 foi respondida
-                     if q1_3 != "Selecione...": inputs_ready = True
-                 else:
-                     # Se 1.2 foi SN/NI/NA, 1.3 fica oculta/NA, então está pronto
-                     inputs_ready = True
-        elif q1_1 in ["N", "PN", "NI"] and q1_4 != "Selecione...":
-             inputs_ready = True
-
-    if inputs_ready:
-        # --- RISCO CRÍTICO (4 Caminhos) ---
-        is_critical = False
+    # --- ALGORITMO INTELIGENTE (VARIANTE B) ---
+    
+    # 1. ATALHO DE RISCO CRÍTICO (Independente de 1.5)
+    # Viés de Colisor: Método Ruim + Controle de Pós-intervenção
+    if q1_1 in ["N", "PN", "NI"] and q1_4 in ["Y", "PY"]:
+        d1_risk = "CRITICAL"
+        d1_reason = "Determinante: Método inadequado com ajuste por variáveis pós-intervenção (Viés de Colisor)."
+    
+    # 2. CÁLCULO PARA OS DEMAIS CASOS (Requer 1.5 preenchido)
+    elif q1_5 != "Selecione...":
         
-        # 1. Viés de Colisor (Erro Metodológico)
-        # 1.1 [N, PN, NI] -> 1.4 [Y, PY]
-        if q1_1 in ["N", "PN", "NI"] and q1_4 in ["Y", "PY"]:
-            d1_risk = "CRITICAL"
-            d1_reason = "Método inadequado com ajuste por variáveis pós-intervenção (Viés de Colisor)."
-            is_critical = True
-        
-        # 2. Método Inadequado + Viés Confirmado
-        # 1.1 [N, PN, NI] -> 1.4 [N, PN, NI] -> 1.5 [Y, PY]
-        elif q1_1 in ["N", "PN", "NI"] and q1_4 in ["N", "PN", "NI"] and q1_5 in ["Y", "PY"]:
-            d1_risk = "CRITICAL"
-            d1_reason = "Método inadequado e controles negativos indicam confusão não controlada."
-            is_critical = True
-            
-        # 3. Falha Substancial de Controle + Viés Confirmado
-        # 1.1 [Y, PY] -> 1.2 [SN, NI] -> 1.5 [Y, PY]
-        elif q1_1 in ["Y", "PY"] and q1_2 in ["SN", "NI"] and q1_5 in ["Y", "PY"]:
-            d1_risk = "CRITICAL"
-            d1_reason = "Falha substancial no controle confirmada por controles negativos."
-            is_critical = True
-            
-        # 4. Falha Substancial de Medição + Viés Confirmado
-        # 1.1 [Y, PY] -> 1.2 [Y, PY, WN] -> 1.3 [SN, NI] -> 1.5 [Y, PY]
-        elif q1_1 in ["Y", "PY"] and q1_3 in ["SN", "NI"] and q1_5 in ["Y", "PY"]:
-            d1_risk = "CRITICAL"
-            d1_reason = "Medição inválida dos fatores confirmada por viés em controles negativos."
-            is_critical = True
+        # --- CAMINHO A: MÉTODO INADEQUADO (1.1 N/PN/NI) ---
+        if q1_1 in ["N", "PN", "NI"]:
+            # Se chegou aqui, 1.4 não é Y/PY (pois cairia no atalho acima)
+            if q1_4 != "Selecione...":
+                if q1_5 in ["Y", "PY"]:
+                    d1_risk = "CRITICAL"
+                    d1_reason = "Método inadequado e controles negativos indicam confusão não controlada."
+                else:
+                    d1_risk = "SERIOUS"
+                    d1_reason = "Método de análise inadequado para adesão (falha em ajustar confusão variável no tempo)."
 
-        if not is_critical:
-            # --- RISCO SÉRIO (7 Possibilidades) ---
-            is_serious = False
+        # --- CAMINHO B: MÉTODO ADEQUADO (1.1 Y/PY) ---
+        elif q1_1 in ["Y", "PY"]:
             
-            # Grupo A: Falha Metodológica (Sem Colisor)
-            # 1.1 [N, PN, NI] -> 1.4 [N, PN, NI] -> 1.5 [N, PN]
-            if q1_1 in ["N", "PN", "NI"] and q1_4 in ["N", "PN", "NI"] and q1_5 in ["N", "PN"]:
-                d1_risk = "SERIOUS"
-                d1_reason = "Método de análise inadequado para adesão (falha em ajustar confusão variável no tempo)."
-                is_serious = True
-            
-            # Grupo B: Falhas Substanciais (Sem Confirmação Externa)
-            # 2. Falha Substancial de Controle: 1.1 [Y, PY] -> 1.2 [SN, NI] -> 1.5 [N, PN]
-            elif q1_1 in ["Y", "PY"] and q1_2 in ["SN", "NI"] and q1_5 in ["N", "PN"]:
-                d1_risk = "SERIOUS"
-                d1_reason = "Falha substancial no controle de fatores de confusão."
-                is_serious = True
-            
-            # 3. Controle Bom + Falha Substancial de Medição: 1.1 [Y, PY] -> 1.2 [Y, PY] -> 1.3 [SN, NI] -> 1.5 [N, PN]
-            elif q1_1 in ["Y", "PY"] and q1_2 in ["Y", "PY"] and q1_3 in ["SN", "NI"] and q1_5 in ["N", "PN"]:
-                d1_risk = "SERIOUS"
-                d1_reason = "Falha substancial na medição dos fatores de confusão."
-                is_serious = True
-                
-            # 4. Controle Parcial (WN) + Falha Substancial de Medição: 1.1 [Y, PY] -> 1.2 [WN] -> 1.3 [SN, NI] -> 1.5 [N, PN]
-            elif q1_1 in ["Y", "PY"] and q1_2 == "WN" and q1_3 in ["SN", "NI"] and q1_5 in ["N", "PN"]:
-                 d1_risk = "SERIOUS"
-                 d1_reason = "Controle parcial agravado por medição inválida."
-                 is_serious = True
-                
-            # Grupo C: Viés Confirmado por Controles Negativos (Agravante)
-            # 5. Viés Confirmado em Estudo "Perfeito": 1.1 [Y, PY] -> 1.2 [Y, PY] -> 1.3 [Y, PY] -> 1.5 [Y, PY]
-            elif q1_1 in ["Y", "PY"] and q1_2 in ["Y", "PY"] and q1_3 in ["Y", "PY"] and q1_5 in ["Y", "PY"]:
-                d1_risk = "SERIOUS"
-                d1_reason = "Controles negativos sugerem viés, apesar do rigor metodológico aparente."
-                is_serious = True
-            
-            # 6. Viés Confirmado com Ressalva Leve na Medição: 1.1 [Y, PY] -> 1.2 [Y, PY] -> 1.3 [WN] -> 1.5 [Y, PY]
-            elif q1_1 in ["Y", "PY"] and q1_2 in ["Y", "PY"] and q1_3 == "WN" and q1_5 in ["Y", "PY"]:
-                d1_risk = "SERIOUS"
-                d1_reason = "Problemas menores de medição agravados por viés em controles negativos."
-                is_serious = True
-            
-            # 7. Viés Confirmado com Ressalva Leve no Controle: 1.1 [Y, PY] -> 1.2 [WN] -> 1.3 [Y, PY, WN] -> 1.5 [Y, PY]
-            elif q1_1 in ["Y", "PY"] and q1_2 == "WN" and q1_5 in ["Y", "PY"]:
-                d1_risk = "SERIOUS"
-                d1_reason = "Problemas menores de controle agravados por viés em controles negativos."
-                is_serious = True
+            # Precisamos verificar se temos dados suficientes de 1.2 e 1.3
+            can_calc_b = False
+            if q1_2 in ["SN", "NI"]: can_calc_b = True # Falha controle já define
+            elif q1_2 in ["Y", "PY", "WN"] and q1_3 != "Selecione...": can_calc_b = True
 
-            if not is_serious:
-                # --- RISCO MODERADO (2 Possibilidades) ---
-                is_moderate = False
-                
-                # Ressalva no Controle: 1.1 [Y, PY] -> 1.2 [WN] -> 1.3 [Y, PY, WN] -> 1.5 [N, PN]
-                if q1_1 in ["Y", "PY"] and q1_2 == "WN" and q1_5 in ["N", "PN"]:
-                    d1_risk = "MODERATE"
-                    d1_reason = "Controle incompleto (mas não substancial) dos fatores de confusão."
-                    is_moderate = True
-                
-                # Ressalva na Medição: 1.1 [Y, PY] -> 1.2 [Y, PY] -> 1.3 [WN] -> 1.5 [N, PN]
-                elif q1_1 in ["Y", "PY"] and q1_2 in ["Y", "PY"] and q1_3 == "WN" and q1_5 in ["N", "PN"]:
-                    d1_risk = "MODERATE"
-                    d1_reason = "Preocupações menores quanto à validade/confiabilidade da medição."
-                    is_moderate = True
-                
-                if not is_moderate:
-                    # --- BAIXO RISCO (1 Possibilidade) ---
-                    # Caminho Perfeito: 1.1 [Y, PY] -> 1.2 [Y, PY] -> 1.3 [Y, PY] -> 1.5 [N, PN]
-                    if q1_1 in ["Y", "PY"] and q1_2 in ["Y", "PY"] and q1_3 in ["Y", "PY"] and q1_5 in ["N", "PN"]:
-                        d1_risk = "LOW"
-                        d1_reason = "Baixo risco de viés (G-methods aplicados corretamente e medições válidas)."
-                    else:
-                        d1_risk = "PENDENTE"
-                        d1_reason = "Aguardando preenchimento completo..."
+            if can_calc_b:
+                is_critical = False
+                is_serious = False
+
+                # 1. Checagem de CRÍTICO (Falhas Graves + Viés Confirmado)
+                if q1_5 in ["Y", "PY"]:
+                    if q1_2 in ["SN", "NI"]:
+                        d1_risk, d1_reason = "CRITICAL", "Falha substancial no controle confirmada por controles negativos."
+                        is_critical = True
+                    elif q1_3 in ["SN", "NI"]:
+                        d1_risk, d1_reason = "CRITICAL", "Medição inválida confirmada por viés em controles negativos."
+                        is_critical = True
+
+                if not is_critical:
+                    # 2. Checagem de SÉRIO
+                    
+                    # Grupo B: Falhas Substanciais (Sem confirmação externa de viés)
+                    if q1_2 in ["SN", "NI"]:
+                        d1_risk, d1_reason = "SERIOUS", "Falha substancial no controle de fatores de confusão."
+                        is_serious = True
+                    elif q1_3 in ["SN", "NI"]:
+                        d1_risk, d1_reason = "SERIOUS", "Falha substancial na medição dos fatores de confusão."
+                        is_serious = True
+                    
+                    # Grupo C: Viés Confirmado (Agravante para estudos Bons/Moderados)
+                    elif q1_5 in ["Y", "PY"]:
+                        d1_risk = "SERIOUS"
+                        d1_reason = "Controles negativos sugerem viés, apesar da metodologia aparentemente adequada."
+                        is_serious = True
+                    
+                    if not is_serious:
+                        # 3. MODERADO
+                        # Ressalvas em Controle (1.2 WN) ou Medição (1.3 WN)
+                        if q1_2 == "WN" or q1_3 == "WN":
+                            d1_risk = "MODERATE"
+                            d1_reason = "Ressalvas menores no controle ou medição dos fatores de confusão."
+                        
+                        # 4. BAIXO
+                        else:
+                            d1_risk = "LOW"
+                            d1_reason = "Baixo risco de viés (G-methods aplicados corretamente)."
 
     risks["D1"] = d1_risk
     reasons["D1"] = d1_reason
