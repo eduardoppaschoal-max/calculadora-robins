@@ -154,7 +154,19 @@ if is_variant_a:
     st.caption("Variante A (Intention-to-treat)")
     c1, c2 = st.columns(2)
     with c1:
-        q1_1 = st.selectbox("1.1 Os autores controlaram todos os importantes fatores de confusão que isso se mostrou necessário?", ["Selecione...", "Y", "PY", "WN", "SN", "NI"], help="WN: No, not substantial / SN: No, substantial")
+        # Texto de ajuda resumido para 1.1
+help_1_1 = """
+CONTEXTO: Refere-se aos fatores listados na etapa preliminar.
+- Y / PY: Todos os fatores importantes foram controlados adequadamente.
+- WN (Não, não substancial): A maioria foi controlada. O viés residual provavelmente é desprezível.
+- SN (Não, substancial): Pelo menos um fator importante NÃO foi controlado, com provável impacto no resultado.
+"""
+
+q1_1 = st.selectbox(
+    "1.1 Os autores controlaram todos os importantes fatores de confusão?",
+    ["Selecione...", "Y", "PY", "WN", "SN", "NI"],
+    help=help_1_1  # O tooltip aparece aqui
+)
         q1_2 = st.selectbox("1.2 Se Y/PY/WN para 1.1: Os fatores de confusão que foram controlados (e para os quais o controle era necessário) foram medidos de forma válida e confiável pelas variáveis disponíveis neste estudo?", ["Selecione...", "NA", "Y", "PY", "WN", "SN", "NI"])
     with c2:
         q1_3 = st.selectbox("1.3 Se Y/PY/WN para 1.1: Os autores controlaram alguma variável pósintervenção que poderia ter sido afetada pela intervenção?", ["Selecione...", "NA", "Y", "PY", "PN", "N", "NI"])
