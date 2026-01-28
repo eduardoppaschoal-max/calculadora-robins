@@ -472,33 +472,190 @@ else:
 st.divider()
 
 # --- DOMÍNIO 2: CLASSIFICAÇÃO ---
-st.header("Domínio 2: Viés na Classificação")
-c1, c2 = st.columns(2)
-with c1:
-    q2_1 = st.selectbox("2.1 Intervenções distinguíveis no início?", ["Selecione...", "Y", "PY", "PN", "N", "NI"])
-    q2_2 = st.selectbox("2.2 Eventos ocorreram após distinção?", ["Selecione...", "NA", "Y", "PY", "PN", "N", "NI"])
-    q2_3 = st.selectbox("2.3 Análise apropriada para atribuição tardia?", ["Selecione...", "NA", "SY", "WY", "PN", "N", "NI"])
-with c2:
-    q2_4 = st.selectbox("2.4 Classificação influenciada pelo desfecho?", ["Selecione...", "SY", "WY", "PN", "N", "NI"])
-    q2_5 = st.selectbox("2.5 Erros de classificação adicionais?", ["Selecione...", "Y", "PY", "PN", "N", "NI"])
+st.header("Domínio 2: Viés na Classificação das Intervenções")
 
-d2_risk, d2_reason = "PENDENTE", "Aguardando respostas..."
-if "Selecione..." not in [q2_1, q2_2, q2_3, q2_4, q2_5]:
-    immortal_time_issue = False
-    if q2_1 in ["N", "PN", "NI"] and q2_2 in ["N", "PN", "NI"]:
-        if q2_3 not in ["SY"]: 
-            immortal_time_issue = True
+# Layout: 2.1 (Tempo Imortal) e condicionais na esquerda; 2.4 e 2.5 (Influência/Erro) na direita.
+c1_d2, c2_d2 = st.columns(2)
+
+with c1_d2:
+    # --- BLOCO TEMPO IMORTAL (2.1, 2.2, 2.3) ---
+    st.markdown("###### Definição da Intervenção")
     
-    if q2_4 == "SY": d2_risk, d2_reason = "CRITICAL", "Classificação influenciada substancialmente pelo desfecho."
-    elif q2_4 in ["WY", "NI"]: d2_risk, d2_reason = ("CRITICAL" if immortal_time_issue else "SERIOUS"), "Possível influência do desfecho na classificação."
-    elif immortal_time_issue: d2_risk, d2_reason = "SERIOUS", "Problema de tempo imortal (immortal time bias) não resolvido."
-    elif q2_5 in ["Y", "PY", "NI"] and q2_4 in ["N", "PN"]: d2_risk, d2_reason = "MODERATE", "Erros de classificação não-diferenciais prováveis."
-    else: d2_risk, d2_reason = "LOW", "Classificação bem definida."
+    # 2.1 (Sempre visível)
+    help_2_1 = """
+    No ensaio alvo, o acompanhamento começa na elegibilidade. Em estudos não randomizados, algumas estratégias não são distinguíveis no início (ex: "operar em 6 meses" vs "esperar"). 
+    Classificar participantes baseando-se em eventos futuros gera "viés de tempo imortal".
+    """
+    q2_1 = st.selectbox(
+        "2.1 As estratégias de intervenção eram distinguíveis no momento em que o acompanhamento teria começado?", 
+        ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+        help=help_2_1
+    )
+
+    # Lógica de Visibilidade em Cascata (2.2 e 2.3)
+    q2_2 = "NA"
+    q2_3 = "NA"
+
+    # 2.2 só aparece se 2.1 for problemático
+    if q2_1 in ["N", "PN", "NI"]:
+        help_2_2 = """
+        Se o período de indistinção for curto em relação ao acompanhamento total, poucos eventos ocorrerão nele, limitando o risco de viés.
+        """
+        q2_2 = st.selectbox(
+            "2.2 Todos ou quase todos os eventos ocorreram após a intervenção ser distinguível?",
+            ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+            help=help_2_2
+        )
+        
+        # 2.3 só aparece se 2.2 TAMBÉM for problemático
+        if q2_2 in ["N", "PN", "NI"]:
+            help_2_3 = """
+            Métodos estatísticos avançados (ponderação por censura clonal, g-formula) podem corrigir problemas de estratégias indistinguíveis.
+            - SY: Sim, totalmente.
+            - WY: Sim, parcialmente.
+            """
+            q2_3 = st.selectbox(
+                "2.3 A análise evitou problemas decorrentes de estratégias indistinguíveis?",
+                ["Selecione...", "SY", "WY", "PN", "N", "NI"],
+                help=help_2_3
+            )
+
+with c2_d2:
+    # --- BLOCO CLASSIFICAÇÃO (2.4, 2.5) - SEMPRE VISÍVEIS ---
+    st.markdown("###### Validade da Classificação")
+
+    # 2.4 (Sempre visível)
+    help_2_4 = """
+    A classificação da intervenção foi influenciada pelo conhecimento do desfecho?
+    (Comum em estudos retrospectivos onde o avaliador sabe quem morreu/sobreviveu ao classificar o tratamento).
+    - SY: Sim, totalmente (Risco Alto).
+    - WY: Sim, parcialmente.
+    """
+    q2_4 = st.selectbox(
+        "2.4 A classificação da intervenção foi influenciada pelo conhecimento do desfecho?", 
+        ["Selecione...", "SY", "WY", "PN", "N", "NI"], 
+        help=help_2_4
+    )
+
+    # 2.5 (Sempre visível)
+    help_2_5 = """
+    Houve erros na classificação do status da intervenção?
+    (Critérios ambíguos ou registros incompletos. Se o erro for aleatório, tende a viés para o nulo).
+    """
+    q2_5 = st.selectbox(
+        "2.5 Houve erros na classificação do status da intervenção?",
+        ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+        help=help_2_5
+    )
+
+d2_risk = "PENDENTE"
+d2_reason = "Aguardando respostas..."
+
+# --- ALGORITMO INTELIGENTE DOMÍNIO 2 ---
+
+# Passo 1: Determinar o "Contexto de Entrada" (Status do Tempo Imortal)
+# SAFE: Problema resolvido ou inexistente.
+# PARTIAL: Problema parcialmente resolvido (2.3 WY/NI).
+# BAD: Problema não resolvido (2.3 N/PN).
+
+entry_context = "PENDING"
+
+if q2_1 in ["Y", "PY"]: entry_context = "SAFE"
+elif q2_1 in ["N", "PN", "NI"]:
+    if q2_2 in ["Y", "PY"]: entry_context = "SAFE"
+    elif q2_2 in ["N", "PN", "NI"]:
+        if q2_3 == "SY": entry_context = "SAFE"
+        elif q2_3 in ["WY", "NI"]: entry_context = "PARTIAL"
+        elif q2_3 in ["N", "PN"]: entry_context = "BAD"
+        # Se 2.3 for Selecione..., continua PENDING
+
+# Se 2.4 ou 2.5 não foram respondidos, marcamos como pendente para cálculo final,
+# MAS tentaremos calcular riscos críticos imediatos abaixo.
+inputs_missing = (q2_4 == "Selecione...") or (q2_5 == "Selecione...")
+
+# Passo 2: Cálculo de Risco
+# A lógica tenta encontrar o pior cenário possível com os dados disponíveis.
+
+calculated = False
+
+# --- VERIFICAÇÃO DE RISCO CRÍTICO (Prioridade Máxima) ---
+# 1. Influência Total do Desfecho + Erro de Classificação (Independe da Entrada)
+if q2_4 == "SY" and q2_5 in ["Y", "PY", "NI"]:
+    d2_risk, d2_reason = "CRITICAL", "Determinante: Classificação totalmente influenciada pelo desfecho com erros adicionais."
+    calculated = True
+
+# 2. Entrada Ruim/Parcial + Influência do Desfecho (Independe de 2.5)
+elif entry_context in ["BAD", "PARTIAL"] and q2_4 in ["SY", "WY", "NI"]:
+    d2_risk, d2_reason = "CRITICAL", "Determinante: Problema de tempo imortal não resolvido somado à influência do desfecho."
+    calculated = True
+
+# 3. Entrada Ruim + Erro de Classificação (Se 2.4 for ok ou pendente)
+elif entry_context == "BAD" and q2_5 in ["Y", "PY", "NI"]:
+    d2_risk, d2_reason = "CRITICAL", "Determinante: Problema de tempo imortal não resolvido com erros de classificação."
+    calculated = True
+
+
+if not calculated and not inputs_missing:
+    # --- VERIFICAÇÃO DE RISCO SÉRIO ---
+    is_serious = False
+    
+    # 4. Entrada Segura + Incerteza Desfecho + Erro Classificação
+    if entry_context == "SAFE" and q2_4 in ["WY", "NI"] and q2_5 in ["Y", "PY", "NI"]:
+        d2_risk, d2_reason = "SERIOUS", "Combinação de possível influência do desfecho e erros de classificação."
+        is_serious = True
+        
+    # 5. Entrada Segura + Influência Total (Sem erro 2.5)
+    elif entry_context == "SAFE" and q2_4 == "SY":
+        d2_risk, d2_reason = "SERIOUS", "Classificação influenciada pelo desfecho (viés diferencial)."
+        is_serious = True
+        
+    # 6. Entrada Parcial + Erro de Classificação
+    elif entry_context == "PARTIAL" and q2_5 in ["Y", "PY", "NI"]:
+        d2_risk, d2_reason = "SERIOUS", "Correção apenas parcial do tempo imortal com erros de classificação."
+        is_serious = True
+        
+    # 7. Entrada Ruim (Pura)
+    elif entry_context == "BAD":
+        d2_risk, d2_reason = "SERIOUS", "Problema de tempo imortal (intervenções indistinguíveis) não corrigido."
+        is_serious = True
+
+    if not is_serious:
+        # --- VERIFICAÇÃO DE RISCO MODERADO ---
+        is_moderate = False
+        
+        # 8. Entrada Segura + Erro de Classificação (Puro)
+        if entry_context == "SAFE" and q2_5 in ["Y", "PY", "NI"]:
+            d2_risk, d2_reason = "MODERATE", "Erros de classificação não-diferenciais (provável viés para o nulo)."
+            is_moderate = True
+            
+        # 9. Entrada Segura + Incerteza Influência
+        elif entry_context == "SAFE" and q2_4 in ["WY", "NI"]:
+            d2_risk, d2_reason = "MODERATE", "Dúvida leve sobre influência do desfecho."
+            is_moderate = True
+            
+        # 10. Entrada Parcial (Pura)
+        elif entry_context == "PARTIAL":
+             d2_risk, d2_reason = "MODERATE", "Correção do tempo imortal foi apenas parcial (WY/NI em 2.3)."
+             is_moderate = True
+        
+        if not is_moderate:
+            # --- BAIXO RISCO ---
+            if entry_context == "SAFE" and q2_4 in ["N", "PN"] and q2_5 in ["N", "PN"]:
+                d2_risk, d2_reason = "LOW", "Intervenção bem definida e classificada sem viés."
+            else:
+                # Fallback caso a lógica de entrada falhe (ex: entry_context ainda PENDING)
+                d2_risk = "PENDENTE"
 
 risks["D2"] = d2_risk
 reasons["D2"] = d2_reason
-report_data["domains"]["Domínio 2"] = {"risk": d2_risk, "reason": d2_reason, "answers": {"2.1": q2_1, "2.2": q2_2, "2.3": q2_3, "2.4": q2_4, "2.5": q2_5}}
+
+report_data["domains"]["Domínio 2"] = {
+    "risk": d2_risk, 
+    "reason": d2_reason, 
+    "answers": {"2.1": q2_1, "2.2": q2_2, "2.3": q2_3, "2.4": q2_4, "2.5": q2_5}
+}
 display_risk_card("Domínio 2", d2_risk, d2_reason)
+
 st.divider()
 
 # --- DOMÍNIO 3: SELEÇÃO ---
