@@ -221,37 +221,41 @@ if is_variant_a:
     d1_risk = "PENDENTE"
     d1_reason = "Aguardando respostas..."
     
-    # --- ALGORITMO DOMÍNIO 1 (REFINADO) ---
+    # --- ALGORITMO DOMÍNIO 1 (FINAL) ---
 
-    # 1. ATALHO CRÍTICO: Falha Controle + Viés Confirmado
-    # Independe do resto
+    # 1. ATALHO CRÍTICO A: Falha Controle (SN/NI) + Viés Confirmado (1.4 Y/PY)
     if (q1_1 in ["SN", "NI"]) and (q1_4 in ["Y", "PY"]):
         d1_risk = "CRITICAL"
         d1_reason = "Determinante: Falha no controle (1.1) confirmada por controles negativos (1.4)."
 
-    # 2. ATALHO SÉRIO: Erro de Medição Grave (Sem Ajuste Excessivo)
-    # Se 1.3 for bom (ou NA), mas 1.2 for péssimo, já é SÉRIO no mínimo.
+    # 2. ATALHO CRÍTICO B: Ajuste Excessivo (1.3 Y/PY) + Viés Confirmado (1.4 Y/PY)
+    # Independe da 1.2 (Medição)
+    elif (q1_1 in ["Y", "PY", "WN"]) and (q1_3 in ["Y", "PY"]) and (q1_4 in ["Y", "PY"]):
+        d1_risk = "CRITICAL"
+        d1_reason = "Determinante: Ajuste excessivo (1.3) confirmado por controles negativos (1.4)."
+
+    # 3. ATALHO SÉRIO: Erro de Medição Grave (Sem Ajuste Excessivo)
+    # Se 1.2 for péssimo, já é SÉRIO no mínimo (a menos que caia nos críticos acima depois)
     elif (q1_1 in ["Y", "PY", "WN"]) and (q1_3 in ["N", "PN", "NI", "NA"]) and (q1_2 in ["SN", "NI"]):
         d1_risk = "SERIOUS"
         d1_reason = "Determinante: Erro substancial na medição dos fatores (1.2)."
 
-    # 3. CÁLCULO COMPLEXO
+    # 4. CÁLCULO DETALHADO (Se não caiu nos atalhos)
     else:
-        # Verifica se temos respostas suficientes para decidir
-        # Se 1.1 for Falha, precisamos saber 1.4 para confirmar se é Crítico ou Sério
-        # Se 1.1 for Bom, precisamos de 1.2, 1.3 e 1.4
-        
         can_calculate = False
+        
+        # Caso Falha Controle: Precisa de 1.4
         if q1_1 in ["SN", "NI"] and q1_4 != "Selecione...":
             can_calculate = True
+            
+        # Caso Controle OK: Precisa de 1.2, 1.3 e 1.4
         elif q1_1 in ["Y", "PY", "WN"] and (q1_2 != "Selecione...") and (q1_3 != "Selecione...") and (q1_4 != "Selecione..."):
             can_calculate = True
 
         if can_calculate:
-            
             # CAMINHO A: FALHA NO CONTROLE (1.1 = SN/NI)
             if q1_1 in ["SN", "NI"]:
-                # Se não caiu no atalho Crítico acima, então 1.4 é N/PN/NA
+                # Se não caiu no Atalho Crítico A, 1.4 é N/PN/NA
                 d1_risk = "SERIOUS"
                 d1_reason = "Falha substancial no controle (1.1). Controles negativos não agravaram para crítico."
 
@@ -262,19 +266,13 @@ if is_variant_a:
 
                 # --- ANÁLISE DE AJUSTE EXCESSIVO (1.3 = Y/PY) ---
                 if q1_3 in ["Y", "PY"]:
-                    # Regra 1: Ajuste Excessivo + Viés Confirmado (1.4 Y/PY) -> CRÍTICO
-                    if q1_4 in ["Y", "PY"]:
-                        d1_risk = "CRITICAL"
-                        d1_reason = "Ajuste excessivo (1.3) confirmado por viés em controles negativos (1.4)."
-                        is_critical = True
+                    # Já testamos 1.4=Y/PY no Atalho Crítico B.
+                    # Resta testar Medição Ruim.
                     
-                    # Regra 2: Ajuste Excessivo + Medição Ruim/Duvidosa (1.2 SN/WN/NI) -> CRÍTICO
-                    elif q1_2 in ["SN", "WN", "NI"]:
+                    if q1_2 in ["SN", "WN", "NI"]:
                         d1_risk = "CRITICAL"
                         d1_reason = "Ajuste excessivo (1.3) agravado por medição insuficiente (1.2)."
                         is_critical = True
-                    
-                    # Regra 3: Ajuste Excessivo + Medição Boa (1.2 Y/PY) -> SÉRIO
                     else:
                         d1_risk = "SERIOUS"
                         d1_reason = "Ajuste excessivo de variáveis (1.3), mitigado por boa medição."
@@ -287,7 +285,7 @@ if is_variant_a:
                         d1_risk, d1_reason = "SERIOUS", "Controles negativos sugerem viés, apesar do bom controle inicial."
                         is_serious = True
                     
-                    # Erro de Medição Grave (Já tratado no Atalho, mas reforço aqui)
+                    # Erro de Medição Grave (Já tratado no Atalho 3, mas reforço lógica aqui)
                     elif q1_2 in ["SN", "NI"]:
                         d1_risk, d1_reason = "SERIOUS", "Erro substancial na medição dos fatores (1.2)."
                         is_serious = True
