@@ -92,19 +92,33 @@ def generate_pdf(data):
     return pdf.output(dest="S").encode("latin-1")
 
 # --- FUNÇÕES AUXILIARES DE UI ---
-def get_risk_color(risk):
-    if "LOW" in risk: 
-        return "#D4AC0D"  # Amarelo escuro
-    elif "MODERATE" in risk: 
+def get_risk_color(risk, domain_name=""):
+    r = str(risk).upper()
+    d = str(domain_name).upper()
+    
+    # 1. Checagem de Baixo Risco
+    if "LOW" in r or "BAIXO RISCO" in r:
+        # REGRA ESPECIAL: Domínio 1 é sempre Amarelo (exceto preocupações)
+        if "DOMÍNIO 1" in d:
+            return "#D4AC0D"  # Amarelo Escuro
+        # REGRA PADRÃO: Outros domínios (2, 3, etc) são Verdes
+        return "#27AE60"      # Verde Esmeralda
+        
+    # 2. Outros Níveis de Risco
+    elif "MODERATE" in r or "MODERADO" in r: 
         return "#E67E22"  # Laranja
-    elif "SERIOUS" in risk: 
+    elif "SERIOUS" in r or "SÉRIO" in r or "SERIO" in r: 
         return "#C0392B"  # Vermelho
-    elif "CRITICAL" in risk: 
+    elif "CRITICAL" in r or "CRÍTICO" in r or "CRITICO" in r: 
         return "#000000"  # Preto
+        
+    # 3. Padrão (Pendente ou erro)
     return "gray"
 
 def display_risk_card(domain, risk, justification):
-    color = get_risk_color(risk)
+    # O SEGREDO ESTÁ AQUI: Passamos 'domain' para get_risk_color saber se aplica a regra do Amarelo ou Verde
+    color = get_risk_color(risk, domain_name=domain)
+    
     st.markdown(f"""
     <div style="padding: 10px; border-left: 5px solid {color}; background-color: #f0f2f6; margin-bottom: 10px;">
         <strong>{domain}:</strong> <span style="color: {color}; font-weight: bold;">{risk}</span><br>
@@ -302,13 +316,18 @@ if is_variant_a:
                         d1_risk = "LOW"
                         d1_reason = "Baixo risco de viés devido a confusão."
 
+    # --- AJUSTE DE TEXTO (TRADUÇÃO) ---
+    if d1_risk == "LOW":
+        d1_risk = "Baixo risco, exceto por preocupações com confusão"
+
+    # Salva nos dados (agora com o texto longo)
     risks["D1"] = d1_risk
     reasons["D1"] = d1_reason
     
     report_data["domains"]["Domínio 1"] = {
         "risk": d1_risk, 
         "reason": d1_reason, 
-        "answers": {"1.1": q1_1, "1.2": q1_2, "1.3": q1_3, "1.4": q1_4}
+        "answers": {"1.1": q1_1, ...} # (Mantenha as respostas originais da variante)
     }
     
     display_risk_card("Domínio 1", d1_risk, d1_reason)
@@ -458,13 +477,18 @@ else:
                             d1_risk = "LOW"
                             d1_reason = "Baixo risco de viés (G-methods aplicados corretamente)."
 
+    # --- AJUSTE DE TEXTO (TRADUÇÃO) ---
+    if d1_risk == "LOW":
+        d1_risk = "Baixo risco, exceto por preocupações com confusão"
+
+    # Salva nos dados (agora com o texto longo)
     risks["D1"] = d1_risk
     reasons["D1"] = d1_reason
     
     report_data["domains"]["Domínio 1"] = {
         "risk": d1_risk, 
         "reason": d1_reason, 
-        "answers": {"1.1": q1_1, "1.2": q1_2, "1.3": q1_3, "1.4": q1_4, "1.5": q1_5}
+        "answers": {"1.1": q1_1, ...} # (Mantenha as respostas originais da variante)
     }
     
     display_risk_card("Domínio 1", d1_risk, d1_reason)
