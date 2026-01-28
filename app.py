@@ -314,7 +314,6 @@ if is_variant_a:
     display_risk_card("Domínio 1", d1_risk, d1_reason)
 
 else:
-    else:
     # --- VARIANTE B (Quando C4 = Sim / Per-protocol) ---
     st.caption("Variante B (Efeito da adesão à intervenção): Foco em confusão variável no tempo.")
     
