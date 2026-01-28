@@ -124,9 +124,9 @@ if study_id:
 # --- 1. TRIAGEM ---
 st.header("1. Considerações Preliminares (Triagem)")
 col_b1, col_b2, col_b3 = st.columns(3)
-with col_b1: b1 = st.selectbox("B1. Tentativa de controle de confusão?", ["Selecione...", "Y", "PY", "PN", "N"])
-with col_b2: b2 = st.selectbox("B2. Potencial de confusão impede avaliação?", ["Selecione...", "N", "PN", "Y", "PY"])
-with col_b3: b3 = st.selectbox("B3. Método de medição inapropriado?", ["Selecione...", "N", "PN", "Y", "PY"])
+with col_b1: b1 = st.selectbox("B1. Os autores fizeram alguma tentativa de controlar fatores de confusão no resultado avaliado?", ["Selecione...", "Y", "PY", "PN", "N"])
+with col_b2: b2 = st.selectbox("B2. Se N/PN para B1: Existe potencial suficiente para fatores de confusão que impeçam a consideração deste resultado posteriormente?", ["Selecione...", "N", "PN", "Y", "PY"])
+with col_b3: b3 = st.selectbox("B3. O método de medição do resultado foi inadequado?", ["Selecione...", "N", "PN", "Y", "PY"])
 
 if b2 in ["Y", "PY"] or b3 in ["Y", "PY"]:
     st.error("🚨 RISCO CRÍTICO DETECTADO NA TRIAGEM. Pare a avaliação.")
@@ -134,7 +134,7 @@ if b2 in ["Y", "PY"] or b3 in ["Y", "PY"]:
 st.divider()
 
 # --- SELEÇÃO DE VARIANTE ---
-c4 = st.radio("C4. Análise contabilizou trocas (switches) ou desvios de protocolo?", ["Não (Intention-to-treat)", "Sim (Per-protocol)"])
+c4 = st.radio("C4. A análise levou em consideração as mudanças entre as estratégias de intervenção comparadas durante o acompanhamento, ou outros desvios de protocolo durante o acompanhamento?", ["Não (Intention-to-treat)", "Sim (Per-protocol)"])
 is_variant_a = "Não" in c4
 
 # Armazenamento de dados para o relatório e lógica
@@ -154,11 +154,11 @@ if is_variant_a:
     st.caption("Variante A (Intention-to-treat)")
     c1, c2 = st.columns(2)
     with c1:
-        q1_1 = st.selectbox("1.1 Controlou todos fatores importantes?", ["Selecione...", "Y", "PY", "WN", "SN", "NI"], help="WN: No, not substantial / SN: No, substantial")
-        q1_2 = st.selectbox("1.2 Fatores medidos validamente?", ["Selecione...", "NA", "Y", "PY", "WN", "SN", "NI"])
+        q1_1 = st.selectbox("1.1 Os autores controlaram todos os importantes fatores de confusão que isso se mostrou necessário?", ["Selecione...", "Y", "PY", "WN", "SN", "NI"], help="WN: No, not substantial / SN: No, substantial")
+        q1_2 = st.selectbox("1.2 Se Y/PY/WN para 1.1: Os fatores de confusão que foram controlados (e para os quais o controle era necessário) foram medidos de forma válida e confiável pelas variáveis disponíveis neste estudo?", ["Selecione...", "NA", "Y", "PY", "WN", "SN", "NI"])
     with c2:
-        q1_3 = st.selectbox("1.3 Controlou variáveis pós-intervenção?", ["Selecione...", "NA", "Y", "PY", "PN", "N", "NI"])
-        q1_4 = st.selectbox("1.4 Controles negativos sugerem viés?", ["Selecione...", "N", "PN", "Y", "PY"])
+        q1_3 = st.selectbox("1.3 Se Y/PY/WN para 1.1: Os autores controlaram alguma variável pósintervenção que poderia ter sido afetada pela intervenção?", ["Selecione...", "NA", "Y", "PY", "PN", "N", "NI"])
+        q1_4 = st.selectbox("1.4 O uso de controles negativos, análise quantitativa de viés ou outras considerações sugeriram a presença de fatores de confusão não controlados significativos?", ["Selecione...", "N", "PN", "Y", "PY"])
     
     d1_risk, d1_reason = "PENDENTE", "Aguardando respostas..."
     if "Selecione..." not in [q1_1, q1_2, q1_3, q1_4]:
