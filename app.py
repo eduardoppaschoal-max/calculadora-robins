@@ -93,10 +93,14 @@ def generate_pdf(data):
 
 # --- FUNÇÕES AUXILIARES DE UI ---
 def get_risk_color(risk):
-    if "LOW" in risk: return "green"
-    elif "MODERATE" in risk: return "gold" 
-    elif "SERIOUS" in risk: return "orange"
-    elif "CRITICAL" in risk: return "red"
+    if "LOW" in risk: 
+        return "#D4AC0D"  # Amarelo escuro (para ler melhor no fundo branco)
+    elif "MODERATE" in risk: 
+        return "#E67E22"  # Laranja
+    elif "SERIOUS" in risk: 
+        return "#C0392B"  # Vermelho
+    elif "CRITICAL" in risk: 
+        return "#000000"  # Preto
     return "gray"
 
 def display_risk_card(domain, risk, justification):
@@ -174,12 +178,13 @@ if is_variant_a:
         if q1_1 in ["Y", "PY", "WN"]:
             help_1_2 = """
             CONTEXTO: Validade das medidas usadas.
-            - Y / PY: Medidas válidas/confiáveis usadas (conforme protocolo/referências) OU não havia fatores de confusão.
-            - Se a validade não for declarada, julgue a subjetividade da medida.
+            - Y / PY: Medidas válidas/confiáveis usadas (conforme protocolo/referências).
+            - WN/SN: Problemas na validade da medição.
+            - NA: Se não havia fatores de confusão.
             """
             q1_2 = st.selectbox(
                 "1.2 Se Y/PY/WN para 1.1: Os fatores de confusão que foram controlados (e para os quais o controle era necessário) foram medidos de forma válida e confiável pelas variáveis disponíveis neste estudo?", 
-                ["Selecione...", "Y", "PY", "WN", "SN", "NI"],
+                ["Selecione...", "Y", "PY", "WN", "SN", "NI", "NA"],
                 help=help_1_2
             )
         else:
@@ -187,31 +192,38 @@ if is_variant_a:
 
     # COLUNA 2
     with c2:
-        # --- PERGUNTA 1.3 ---
-        # A pergunta 1.3 também depende tecnicamente de 1.1 ser positiva (segundo seu texto "Se Y/PY/WN para 1.1"), 
-        # mas no código original ela estava sempre visível. Vou manter a lógica visual de 1.2 para ela também?
-        # Pelo texto da sua pergunta, ela sugere condicionalidade. Vou aplicar a mesma lógica de ocultar se 1.1 for negativo.
-        
+        # --- PERGUNTA 1.3 (CONDICIONAL) ---
         if q1_1 in ["Y", "PY", "WN"]:
+            help_1_3 = """
+            CONTEXTO: Ajuste Excessivo (Over-adjustment).
+            - Y / PY (Risco): Controlaram mediadores ou colisores (introduz viés).
+            - N / PN (Ideal): Não controlaram variáveis pós-intervenção indevidas.
+            """
             q1_3 = st.selectbox(
                 "1.3 Se Y/PY/WN para 1.1: Os autores controlaram alguma variável pósintervenção que poderia ter sido afetada pela intervenção?", 
-                ["Selecione...", "NA", "Y", "PY", "PN", "N", "NI"]
+                ["Selecione...", "Y", "PY", "N", "PN", "NI", "NA"],
+                help=help_1_3
             )
         else:
-            q1_3 = "NA" # Se falhou em 1.1, a discussão de pós-intervenção perde sentido prático para o risco (já é sério).
+            q1_3 = "NA"
         
         # --- PERGUNTA 1.4 ---
+        help_1_4 = """
+        CONTEXTO: Controles Negativos (Checagem de Robustez).
+        - Y / PY (Alerta): O controle negativo mostrou associação (sugere viés).
+        - N / PN (Neutro): Sem problemas detectados ou não usou controle negativo.
+        """
         q1_4 = st.selectbox(
             "1.4 O uso de controles negativos, análise quantitativa de viés ou outras considerações sugeriram a presença de fatores de confusão não controlados significativos?", 
-            ["Selecione...", "N", "PN", "Y", "PY"]
+            ["Selecione...", "Y", "PY", "N", "PN"],
+            help=help_1_4
         )
     
     d1_risk, d1_reason = "PENDENTE", "Aguardando respostas..."
     
-    # Lógica de Decisão (Algoritmo)
+    # Lógica de Decisão (Algoritmo Atualizado com novos inputs)
     questions_answered = (q1_1 != "Selecione...") and \
                          (q1_4 != "Selecione...")
-                         # 1.2 e 1.3 podem ser "NA" ou "Selecione...", precisamos cuidar disso:
     
     if q1_1 in ["Y", "PY", "WN"]:
         questions_answered = questions_answered and (q1_2 != "Selecione...") and (q1_3 != "Selecione...")
