@@ -187,8 +187,8 @@ if is_variant_a:
 
     # COLUNA 2
     with c2:
-        # 1.3 Só aparece se 1.1 não for falha total (para UX ficar limpa)
-        if q1_1 in ["Y", "PY", "WN", "Selecione..."]:
+        # 1.3 Só aparece estritamente se 1.1 for positivo (Y/PY/WN)
+        if q1_1 in ["Y", "PY", "WN"]:
             help_1_3 = """
             CONTEXTO: Ajuste Excessivo (Over-adjustment).
             - Y / PY (Risco): Controlaram mediadores ou colisores.
@@ -203,11 +203,12 @@ if is_variant_a:
             q1_3 = "NA"
             
         # Lógica de Exibição da 1.2
+        # Aparece se 1.1 for bom OU se 1.1 for ruim mas 1.4 for neutro (Caminho para tentar salvar o Crítico)
         show_q1_2 = False
         if q1_1 in ["Y", "PY", "WN"]:
             show_q1_2 = True
         elif q1_1 in ["SN", "NI"] and q1_4 in ["N", "PN", "NA"]:
-            show_q1_2 = True # Necessário para diferenciar Crítico de Sério no caminho inferior
+            show_q1_2 = True 
             
         if show_q1_2:
             help_1_2 = """
@@ -235,12 +236,13 @@ if is_variant_a:
         d1_risk = "CRITICAL"
         d1_reason = "Determinante: Falha no controle (1.1) confirmada por controles negativos (1.4)."
 
-    # 2. ATALHO SÉRIO: Ajuste Excessivo
+    # 2. ATALHO SÉRIO: Ajuste Excessivo (Requer 1.3 preenchida)
     elif (q1_1 in ["Y", "PY", "WN"]) and (q1_3 in ["Y", "PY"]):
         d1_risk = "SERIOUS"
         d1_reason = "Determinante: Ajuste excessivo de variáveis (1.3)."
 
-    # 3. ATALHO SÉRIO: Erro de Medição (Quando 1.3 já está OK)
+    # 3. ATALHO SÉRIO: Erro de Medição (Quando 1.3 já está OK ou NA)
+    # Nota: Se 1.3 for Selecione..., não entra aqui, cai no 'else' pendente
     elif (q1_1 in ["Y", "PY", "WN"]) and (q1_3 in ["N", "PN", "NI", "NA"]) and (q1_2 in ["SN", "NI"]):
         d1_risk = "SERIOUS"
         d1_reason = "Determinante: Erro substancial na medição dos fatores (1.2)."
@@ -261,7 +263,6 @@ if is_variant_a:
             # --- VERIFICAÇÃO DE OUTROS CAMINHOS CRÍTICOS ---
             # Caminho Inferior: Falha de Controle + Medição Ruim
             if (q1_1 in ["SN", "NI"]) and (q1_4 in ["N", "PN", "NA"]) and (q1_2 in ["SN", "NI", "NA", "WN"]):
-                # Nota: WN aqui também leva a Crítico segundo fluxograma
                 d1_risk = "CRITICAL"
                 d1_reason = "Falha substancial no controle (1.1) agravada por medição insuficiente (1.2)."
                 is_critical = True
