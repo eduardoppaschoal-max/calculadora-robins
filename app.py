@@ -150,44 +150,75 @@ reasons = {}
 
 # --- DOMÍNIO 1: CONFUSÃO ---
 st.header("Domínio 1: Viés devido a Confusão")
+
 if is_variant_a:
     st.caption("Variante A (Intention-to-treat)")
     c1, c2 = st.columns(2)
+    
+    # ATENÇÃO: Tudo abaixo de 'with c1:' precisa estar recuado (indentado)
     with c1:
-        # Texto de ajuda resumido para 1.1
-help_1_1 = """
-CONTEXTO: Refere-se aos fatores listados na etapa preliminar.
-- Y / PY: Todos os fatores importantes foram controlados adequadamente.
-- WN (Não, não substancial): A maioria foi controlada. O viés residual provavelmente é desprezível.
-- SN (Não, substancial): Pelo menos um fator importante NÃO foi controlado, com provável impacto no resultado.
-"""
+        # Texto de ajuda (Tooltip) para 1.1
+        help_1_1 = """
+        CONTEXTO: Fatores da avaliação preliminar.
+        - Y / PY: Todos fatores importantes foram controlados adequadamente.
+        - WN (Não, não substancial): A maioria foi controlada. Viés residual provável é pequeno.
+        - SN (Não, substancial): Fator importante NÃO controlado com provável impacto no resultado.
+        """
+        
+        q1_1 = st.selectbox(
+            "1.1 Controlou todos fatores importantes?", 
+            ["Selecione...", "Y", "PY", "WN", "SN", "NI"], 
+            help=help_1_1 # O tooltip entra aqui
+        )
+        
+        q1_2 = st.selectbox(
+            "1.2 Fatores medidos validamente?", 
+            ["Selecione...", "NA", "Y", "PY", "WN", "SN", "NI"]
+        )
 
-q1_1 = st.selectbox(
-    "1.1 Os autores controlaram todos os importantes fatores de confusão?",
-    ["Selecione...", "Y", "PY", "WN", "SN", "NI"],
-    help=help_1_1  # O tooltip aparece aqui
-)
-        q1_2 = st.selectbox("1.2 Se Y/PY/WN para 1.1: Os fatores de confusão que foram controlados (e para os quais o controle era necessário) foram medidos de forma válida e confiável pelas variáveis disponíveis neste estudo?", ["Selecione...", "NA", "Y", "PY", "WN", "SN", "NI"])
     with c2:
-        q1_3 = st.selectbox("1.3 Se Y/PY/WN para 1.1: Os autores controlaram alguma variável pósintervenção que poderia ter sido afetada pela intervenção?", ["Selecione...", "NA", "Y", "PY", "PN", "N", "NI"])
-        q1_4 = st.selectbox("1.4 O uso de controles negativos, análise quantitativa de viés ou outras considerações sugeriram a presença de fatores de confusão não controlados significativos?", ["Selecione...", "N", "PN", "Y", "PY"])
+        q1_3 = st.selectbox(
+            "1.3 Controlou variáveis pós-intervenção?", 
+            ["Selecione...", "NA", "Y", "PY", "PN", "N", "NI"]
+        )
+        q1_4 = st.selectbox(
+            "1.4 Controles negativos sugerem viés?", 
+            ["Selecione...", "N", "PN", "Y", "PY"]
+        )
     
     d1_risk, d1_reason = "PENDENTE", "Aguardando respostas..."
+    
+    # Lógica de Decisão (Algoritmo)
     if "Selecione..." not in [q1_1, q1_2, q1_3, q1_4]:
-        if q1_4 in ["Y", "PY"]: d1_risk, d1_reason = "CRITICAL", "Controles negativos indicam viés de confusão não controlada séria."
-        elif q1_1 in ["SN", "NI"]: d1_risk, d1_reason = "SERIOUS", "Falha substancial no controle de fatores de confusão importantes."
-        elif q1_3 in ["Y", "PY"]: d1_risk, d1_reason = "SERIOUS", "Controle inadequado de variáveis pós-intervenção (over-adjustment)."
-        elif q1_2 in ["SN", "NI"]: d1_risk, d1_reason = "SERIOUS", "Erro de medição substancial nos fatores de confusão."
-        elif q1_1 == "WN" or q1_2 == "WN": d1_risk, d1_reason = "MODERATE", "Preocupações menores com confusão residual ou erro de medição."
-        else: d1_risk, d1_reason = "LOW", "Baixo risco (exceto confusão residual)."
+        if q1_4 in ["Y", "PY"]: 
+            d1_risk, d1_reason = "CRITICAL", "Controles negativos indicam viés de confusão não controlada séria."
+        elif q1_1 in ["SN", "NI"]: 
+            d1_risk, d1_reason = "SERIOUS", "Falha substancial no controle de fatores de confusão importantes."
+        elif q1_3 in ["Y", "PY"]: 
+            d1_risk, d1_reason = "SERIOUS", "Controle inadequado de variáveis pós-intervenção (over-adjustment)."
+        elif q1_2 in ["SN", "NI"]: 
+            d1_risk, d1_reason = "SERIOUS", "Erro de medição substancial nos fatores de confusão."
+        elif q1_1 == "WN" or q1_2 == "WN": 
+            d1_risk, d1_reason = "MODERATE", "Preocupações menores com confusão residual ou erro de medição."
+        else: 
+            d1_risk, d1_reason = "LOW", "Baixo risco (exceto confusão residual)."
     
     risks["D1"] = d1_risk
     reasons["D1"] = d1_reason
-    report_data["domains"]["Domínio 1"] = {"risk": d1_risk, "reason": d1_reason, "answers": {"1.1": q1_1, "1.2": q1_2, "1.3": q1_3, "1.4": q1_4}}
+    
+    # Salva dados para o relatório
+    report_data["domains"]["Domínio 1"] = {
+        "risk": d1_risk, 
+        "reason": d1_reason, 
+        "answers": {"1.1": q1_1, "1.2": q1_2, "1.3": q1_3, "1.4": q1_4}
+    }
+    
     display_risk_card("Domínio 1", d1_risk, d1_reason)
+
 else:
     st.warning("A Variante B requer lógica complexa de G-methods. Implemente conforme necessário.")
     risks["D1"] = "N/A"
+
 st.divider()
 
 # --- DOMÍNIO 2: CLASSIFICAÇÃO ---
