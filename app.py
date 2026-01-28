@@ -874,38 +874,204 @@ report_data["domains"]["Domínio 3"] = {
 display_risk_card("Domínio 3", d3_risk, d3_reason)
 st.divider()
 
-# --- DOMÍNIO 4: DADOS FALTANTES ---
-st.header("Domínio 4: Dados Faltantes")
-c1, c2 = st.columns(2)
-with c1:
-    q4_1 = st.selectbox("4.1 Dados intervenção completos?", ["Selecione...", "Y", "PY", "PN", "N", "NI"])
-    q4_2 = st.selectbox("4.2 Dados desfecho completos?", ["Selecione...", "Y", "PY", "PN", "N", "NI"])
-    q4_3 = st.selectbox("4.3 Dados confusão completos?", ["Selecione...", "Y", "PY", "PN", "N", "NI"])
-    q4_4 = st.selectbox("4.4 Análise de casos completos (Complete Case)?", ["Selecione...", "NA", "Y", "PY", "PN", "N", "NI"])
-with c2:
-    q4_5 = st.selectbox("4.5 Exclusão relacionada ao desfecho?", ["Selecione...", "NA", "Y", "PY", "PN", "N", "NI"])
-    q4_6 = st.selectbox("4.6 Relação explicada pelo modelo?", ["Selecione...", "NA", "Y", "PY", "WN", "SN", "NI"])
-    q4_9 = st.selectbox("4.9 Imputação apropriada?", ["Selecione...", "NA", "Y", "PY", "WN", "SN", "NI"])
-    q4_11 = st.selectbox("4.11 Evidência de que não houve viés?", ["Selecione...", "NA", "Y", "PY", "PN", "N", "NI"])
+# --- DOMÍNIO 4: DADOS FALTANTES (LÓGICA OFICIAL ROBINS-I) ---
+st.header("Domínio 4: Viés devido a Dados Faltantes")
 
-d4_risk, d4_reason = "PENDENTE", "Aguardando respostas..."
-if "Selecione..." not in [q4_1, q4_4]:
-    all_complete = (q4_1 in ["Y", "PY"] and q4_2 in ["Y", "PY"] and q4_3 in ["Y", "PY"])
-    if all_complete: d4_risk, d4_reason = "LOW", "Dados completos para quase todos os participantes."
+st.markdown("""
+Este domínio avalia a integridade dos dados e, se houver perdas, se a estratégia de análise (Casos Completos ou Imputação) lidou corretamente com o viés.
+""")
+
+# --- PASSO 1: TRIAGEM (4.1 a 4.3) ---
+# Sempre visíveis para determinar se há dados faltantes
+c1_d4, c2_d4 = st.columns(2)
+
+with c1_d4:
+    q4_1 = st.selectbox(
+        "4.1 Dados da intervenção completos?",
+        ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+        help="Y/PY: Quase todos os participantes têm dados da intervenção."
+    )
+    q4_3 = st.selectbox(
+        "4.3 Dados de confundidores (covariáveis) completos?",
+        ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+        help="Y/PY: Quase todos os participantes têm dados das variáveis de ajuste."
+    )
+
+with c2_d4:
+    q4_2 = st.selectbox(
+        "4.2 Dados do desfecho completos?",
+        ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+        help="Y/PY: Quase todos os participantes têm dados do desfecho."
+    )
+
+# Verifica se há "Any N/PN/NI" (Dados Faltantes)
+missing_data = False
+if "Selecione..." not in [q4_1, q4_2, q4_3]:
+    if q4_1 in ["PN", "N", "NI"] or q4_2 in ["PN", "N", "NI"] or q4_3 in ["PN", "N", "NI"]:
+        missing_data = True
+
+# --- PASSO 2: ESTRATÉGIA DE ANÁLISE (4.4) ---
+# Aparece somente se houver dados faltantes
+q4_4 = "NA"
+analysis_type = "NONE"
+
+if missing_data:
+    st.divider()
+    st.subheader("Estratégia de Análise")
+    
+    help_4_4 = """
+    A análise excluiu participantes com dados faltantes (Análise de Casos Completos)?
+    - Y/PY: Sim, apenas quem tinha dados completos foi analisado.
+    - N/PN: Não, usaram imputação ou outros métodos.
+    """
+    q4_4 = st.selectbox(
+        "4.4 A análise foi feita apenas com casos completos?",
+        ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+        help=help_4_4
+    )
+    
+    if q4_4 in ["Y", "PY", "NI"]: analysis_type = "COMPLETE_CASE"
+    elif q4_4 in ["N", "PN"]: analysis_type = "IMPUTATION_OR_OTHER"
+
+# --- PASSO 3: CAMINHOS ESPECÍFICOS (RAMIFICAÇÃO) ---
+q4_5, q4_6 = "NA", "NA"
+q4_7, q4_8, q4_9, q4_10 = "NA", "NA", "NA", "NA"
+
+# Ramo A: Análise de Casos Completos (Se 4.4 = Y/PY/NI)
+if analysis_type == "COMPLETE_CASE":
+    st.markdown("**Avaliação da Análise de Casos Completos**")
+    
+    # 4.5 Sempre aparece neste ramo
+    q4_5 = st.selectbox(
+        "4.5 A exclusão está relacionada ao valor real do desfecho (MNAR)?",
+        ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+        help="Y/PY: Risco alto (ex: paciente saiu porque piorou)."
+    )
+    
+    # 4.6 Aparece somente se 4.5 for N/PN (Se MNAR não for óbvio, checamos MAR)
+    if q4_5 in ["N", "PN"]:
+        q4_6 = st.selectbox(
+            "4.6 A relação entre perda e desfecho é explicada pelo modelo?",
+            ["Selecione...", "Y", "PY", "WN", "NI", "SN"], # SN = Strong No
+            help="Y/PY: As variáveis de ajuste predizem a perda (MAR).\nSN: Falha grave na explicação."
+        )
+
+# Ramo B: Imputação ou Outros (Se 4.4 = N/PN)
+elif analysis_type == "IMPUTATION_OR_OTHER":
+    st.markdown("**Avaliação de Imputação / Outros Métodos**")
+    
+    # 4.7 Sempre aparece neste ramo
+    q4_7 = st.selectbox(
+        "4.7 A análise foi baseada em imputação de valores?",
+        ["Selecione...", "Y", "PY", "PN", "N", "NI"]
+    )
+    
+    # Sub-ramo B1: Imputação (Se 4.7 = Y/PY)
+    if q4_7 in ["Y", "PY"]:
+        q4_8 = st.selectbox(
+            "4.8 As premissas MAR/MCAR são razoáveis?",
+            ["Selecione...", "Y", "PY", "PN", "N", "NI"]
+        )
+        
+        # 4.9 Aparece somente se 4.8 = Y/PY
+        if q4_8 in ["Y", "PY"]:
+            q4_9 = st.selectbox(
+                "4.9 A imputação foi apropriada?",
+                ["Selecione...", "Y", "PY", "WN", "NI", "SN"],
+                help="Y/PY leva a Baixo Risco. SN leva a Risco Crítico/Sério."
+            )
+            
+    # Sub-ramo B2: Outros Métodos (Se 4.7 = N/PN/NI)
+    elif q4_7 in ["N", "PN", "NI"]: 
+        q4_10 = st.selectbox(
+            "4.10 Foi usado outro método apropriado (ex: IPW)?",
+            ["Selecione...", "Y", "PY", "WN", "NI", "SN"],
+            help="Y/PY leva a Baixo Risco."
+        )
+
+# --- PASSO 4: EVIDÊNCIA DE VIÉS (4.11) ---
+# Lógica de Gatilho Condicional baseada no Fluxograma
+need_4_11 = False
+
+if analysis_type == "COMPLETE_CASE":
+    # Se 4.5 indicou problema (Y/PY/NI) -> Vai para 4.11
+    if q4_5 in ["Y", "PY", "NI"]: need_4_11 = True
+    # Se 4.6 foi respondido (independente da resposta, o fluxo converge em 4.11 ou Risco)
+    # Diagrama: 4.6 Y/PY -> 4.11 (caminho superior), WN/NI -> 4.11, SN -> 4.11
+    elif q4_6 != "NA" and q4_6 != "Selecione...": need_4_11 = True
+
+elif analysis_type == "IMPUTATION_OR_OTHER":
+    if q4_7 in ["Y", "PY"]:
+        # Se falhou nas premissas (4.8 N/PN/NI)
+        if q4_8 in ["N", "PN", "NI"]: need_4_11 = True
+        # Se falhou na imputação (4.9 WN/NI/SN) - Se Y/PY já é Low Risk
+        elif q4_9 in ["WN", "NI", "SN"]: need_4_11 = True
     else:
-        if q4_4 in ["Y", "PY", "NI"]:
-            if q4_5 in ["Y", "PY", "NI"]:
-                if q4_6 == "SN": d4_risk, d4_reason = ("SERIOUS" if q4_11 not in ["Y", "PY"] else "MODERATE"), "Exclusão relacionada ao desfecho não explicada pelo modelo."
-                elif q4_6 in ["WN", "NI"]: d4_risk, d4_reason = "MODERATE", "Incerteza sobre a relação entre exclusão e desfecho."
-                else: d4_risk, d4_reason = "LOW", "Relação explicada pelo modelo."
-            else: d4_risk, d4_reason = "LOW", "Exclusão não relacionada ao desfecho."
-        elif q4_9 == "SN": d4_risk, d4_reason = ("CRITICAL" if q4_11 not in ["Y", "PY"] else "SERIOUS"), "Método de imputação inadequado."
-        elif q4_9 in ["WN", "NI"]: d4_risk, d4_reason = "MODERATE", "Dúvidas sobre a qualidade da imputação."
-        else: d4_risk, d4_reason = "LOW", "Imputação ou método alternativo apropriado."
+        # Se falhou no método alternativo (4.10 WN/NI/SN) - Se Y/PY já é Low Risk
+        if q4_10 in ["WN", "NI", "SN"]: need_4_11 = True
 
+q4_11 = "NA"
+if need_4_11:
+    st.divider()
+    help_4_11 = "Existem evidências (ex: análise de sensibilidade) de que o resultado NÃO é enviesado apesar dos problemas?"
+    q4_11 = st.selectbox(
+        "4.11 Existe evidência de que o resultado não é enviesado?",
+        ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+        help=help_4_11
+    )
+
+# --- ALGORITMO DE DECISÃO DOMÍNIO 4 ---
+d4_risk = "PENDENTE"
+d4_reason = "Aguardando respostas..."
+
+# 1. Triagem (Sem dados faltantes) -> LOW
+if not missing_data:
+    if "Selecione..." not in [q4_1, q4_2, q4_3]:
+        d4_risk = "LOW"
+        d4_reason = "Dados completos para intervenção, desfecho e confundidores."
+
+# 2. Caminhos de Sucesso Direto (Verde no Fluxograma)
+elif q4_9 in ["Y", "PY"]:
+    d4_risk = "LOW"
+    d4_reason = "Imputação apropriada com premissas válidas."
+elif q4_10 in ["Y", "PY"]:
+    d4_risk = "LOW"
+    d4_reason = "Método alternativo apropriado utilizado."
+
+# 3. Caminhos que exigem 4.11
+elif need_4_11 and q4_11 != "Selecione...":
+    
+    # Verifica se veio de um "Strong No" (Erro Grave)
+    came_from_strong_no = (q4_6 == "SN") or (q4_9 == "SN") or (q4_10 == "SN")
+    
+    # Se há evidência de que NÃO é enviesado (4.11 Y/PY)
+    if q4_11 in ["Y", "PY"]:
+        if came_from_strong_no:
+            d4_risk = "SERIOUS" # Diagrama: SN -> 4.11(Y) -> Serious
+            d4_reason = "Erro metodológico grave mitigado parcialmente (risco residual)."
+        else:
+            d4_risk = "MODERATE" # Diagrama: Outros -> 4.11(Y) -> Moderate
+            d4_reason = "Problemas de dados faltantes mitigados por análise de sensibilidade."
+            
+    # Se NÃO HÁ evidência de isenção (4.11 N/PN)
+    elif q4_11 in ["N", "PN", "NI"]:
+        if came_from_strong_no:
+            d4_risk = "CRITICAL" # Diagrama: SN -> 4.11(N) -> Critical
+            d4_reason = "Falha metodológica grave (Strong No) sem evidência de robustez."
+        else:
+            d4_risk = "SERIOUS" # Padrão para falhas não mitigadas
+            d4_reason = "Viés devido a dados faltantes provável e não mitigado."
+
+# Salva resultado
 risks["D4"] = d4_risk
 reasons["D4"] = d4_reason
-report_data["domains"]["Domínio 4"] = {"risk": d4_risk, "reason": d4_reason, "answers": {"4.1": q4_1, "4.2": q4_2, "4.3": q4_3, "4.4": q4_4, "4.5": q4_5}}
+
+report_data["domains"]["Domínio 4"] = {
+    "risk": d4_risk, 
+    "reason": d4_reason, 
+    "answers": {k: v for k, v in locals().items() if k.startswith('q4_') and isinstance(v, str)}
+}
+
 display_risk_card("Domínio 4", d4_risk, d4_reason)
 st.divider()
 
