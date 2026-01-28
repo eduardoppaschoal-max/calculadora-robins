@@ -94,7 +94,7 @@ def generate_pdf(data):
 # --- FUNÇÕES AUXILIARES DE UI ---
 def get_risk_color(risk):
     if "LOW" in risk: 
-        return "#D4AC0D"  # Amarelo escuro (para ler melhor no fundo branco)
+        return "#D4AC0D"  # Amarelo escuro
     elif "MODERATE" in risk: 
         return "#E67E22"  # Laranja
     elif "SERIOUS" in risk: 
@@ -125,30 +125,34 @@ st.title("ROBINS-I V2: Calculadora de Risco de Viés")
 if study_id:
     st.subheader(f"Avaliando: {study_id}")
 
-# --- 1. TRIAGEM ---
+# --- 1. TRIAGEM E CONTEXTO ---
 st.header("1. Considerações Preliminares (Triagem)")
 col_b1, col_b2, col_b3 = st.columns(3)
 with col_b1: b1 = st.selectbox("B1. Os autores fizeram alguma tentativa de controlar fatores de confusão no resultado avaliado?", ["Selecione...", "Y", "PY", "PN", "N"])
 with col_b2: b2 = st.selectbox("B2. Se N/PN para B1: Existe potencial suficiente para fatores de confusão que impeçam a consideração deste resultado posteriormente?", ["Selecione...", "N", "PN", "Y", "PY"])
 with col_b3: b3 = st.selectbox("B3. O método de medição do resultado foi inadequado?", ["Selecione...", "N", "PN", "Y", "PY"])
 
+# TRAVA DE SEGURANÇA
 if b2 in ["Y", "PY"] or b3 in ["Y", "PY"]:
-    st.error("🚨 RISCO CRÍTICO DETECTADO NA TRIAGEM. Pare a avaliação.")
+    st.error("🚨 RISCO CRÍTICO DETECTADO NA TRIAGEM (B2 ou B3). Pare a avaliação aqui.")
     st.stop()
 st.divider()
 
-# --- SELEÇÃO DE VARIANTE ---
-c4 = st.radio("C4. A análise levou em consideração as mudanças entre as estratégias de intervenção comparadas durante o acompanhamento, ou outros desvios de protocolo durante o acompanhamento?", ["Não (Intention-to-treat)", "Sim (Per-protocol)"])
+# SELEÇÃO DE VARIANTE (C4)
+st.markdown("### Contexto da Análise")
+c4 = st.radio(
+    "C4. A análise levou em consideração as mudanças entre as estratégias de intervenção comparadas durante o acompanhamento, ou outros desvios de protocolo durante o acompanhamento?", 
+    ["Não (Intention-to-treat / Atribuição)", "Sim (Per-protocol / Adesão)"]
+)
 is_variant_a = "Não" in c4
 
-# Armazenamento de dados para o relatório e lógica
+# Inicialização de variáveis globais
 report_data = {
     "study_id": study_id,
     "outcome": outcome,
     "numeric_result": numeric_result,
     "domains": {}
 }
-
 risks = {}
 reasons = {}
 
@@ -156,7 +160,7 @@ reasons = {}
 st.header("Domínio 1: Viés devido a Confusão")
 
 if is_variant_a:
-    st.caption("Variante A (Intention-to-treat)")
+    st.caption("Variante A (Intention-to-treat): Foco na atribuição da intervenção.")
     c1, c2 = st.columns(2)
 
     # COLUNA 1
@@ -188,7 +192,7 @@ if is_variant_a:
 
     # COLUNA 2
     with c2:
-        # Visibilidade dinâmica
+        # Visibilidade dinâmica: 1.2 e 1.3 só aparecem se houve tentativa de controle
         enable_details = q1_1 in ["Y", "PY", "WN"]
         
         if enable_details:
@@ -221,7 +225,8 @@ if is_variant_a:
     d1_risk = "PENDENTE"
     d1_reason = "Aguardando respostas..."
     
-    # --- ALGORITMO DOMÍNIO 1 (FINAL) ---
+    # --- ALGORITMO OTIMIZADO DOMÍNIO 1 (Early Exit) ---
+    # Prioridade para riscos CRÍTICOS e SÉRIOS sem exigir preenchimento total se não necessário.
 
     # 1. ATALHO CRÍTICO A: Falha Controle (SN/NI) + Viés Confirmado (1.4 Y/PY)
     if (q1_1 in ["SN", "NI"]) and (q1_4 in ["Y", "PY"]):
@@ -229,13 +234,11 @@ if is_variant_a:
         d1_reason = "Determinante: Falha no controle (1.1) confirmada por controles negativos (1.4)."
 
     # 2. ATALHO CRÍTICO B: Ajuste Excessivo (1.3 Y/PY) + Viés Confirmado (1.4 Y/PY)
-    # Independe da 1.2 (Medição)
     elif (q1_1 in ["Y", "PY", "WN"]) and (q1_3 in ["Y", "PY"]) and (q1_4 in ["Y", "PY"]):
         d1_risk = "CRITICAL"
         d1_reason = "Determinante: Ajuste excessivo (1.3) confirmado por controles negativos (1.4)."
 
     # 3. ATALHO SÉRIO: Erro de Medição Grave (Sem Ajuste Excessivo)
-    # Se 1.2 for péssimo, já é SÉRIO no mínimo (a menos que caia nos críticos acima depois)
     elif (q1_1 in ["Y", "PY", "WN"]) and (q1_3 in ["N", "PN", "NI", "NA"]) and (q1_2 in ["SN", "NI"]):
         d1_risk = "SERIOUS"
         d1_reason = "Determinante: Erro substancial na medição dos fatores (1.2)."
@@ -244,18 +247,18 @@ if is_variant_a:
     else:
         can_calculate = False
         
-        # Caso Falha Controle: Precisa de 1.4
+        # Se Falha Controle: Precisa de 1.4
         if q1_1 in ["SN", "NI"] and q1_4 != "Selecione...":
             can_calculate = True
             
-        # Caso Controle OK: Precisa de 1.2, 1.3 e 1.4
+        # Se Controle OK: Precisa de 1.2, 1.3 e 1.4
         elif q1_1 in ["Y", "PY", "WN"] and (q1_2 != "Selecione...") and (q1_3 != "Selecione...") and (q1_4 != "Selecione..."):
             can_calculate = True
 
         if can_calculate:
             # CAMINHO A: FALHA NO CONTROLE (1.1 = SN/NI)
             if q1_1 in ["SN", "NI"]:
-                # Se não caiu no Atalho Crítico A, 1.4 é N/PN/NA
+                # Se não caiu no Atalho Crítico A, 1.4 é N/PN/NA -> Sério
                 d1_risk = "SERIOUS"
                 d1_reason = "Falha substancial no controle (1.1). Controles negativos não agravaram para crítico."
 
@@ -268,7 +271,6 @@ if is_variant_a:
                 if q1_3 in ["Y", "PY"]:
                     # Já testamos 1.4=Y/PY no Atalho Crítico B.
                     # Resta testar Medição Ruim.
-                    
                     if q1_2 in ["SN", "WN", "NI"]:
                         d1_risk = "CRITICAL"
                         d1_reason = "Ajuste excessivo (1.3) agravado por medição insuficiente (1.2)."
@@ -312,8 +314,11 @@ if is_variant_a:
     display_risk_card("Domínio 1", d1_risk, d1_reason)
 
 else:
-    st.warning("A Variante B requer lógica complexa de G-methods. Implemente conforme necessário.")
-    risks["D1"] = "N/A"
+    # --- Placeholder para Variante B ---
+    st.caption("Variante B (Per-protocol / Confusão variável no tempo)")
+    st.info("🚧 O algoritmo para a Variante B será implementado na próxima etapa.")
+    risks["D1"] = "N/A" # Define N/A para não quebrar o cálculo geral
+    reasons["D1"] = "Variante B selecionada (Em construção)"
 
 st.divider()
 
@@ -362,7 +367,7 @@ with c2:
     q3_8 = st.selectbox("3.8 Vieses severos?", ["Selecione...", "NA", "Y", "PY", "PN", "N", "NI"])
 
 d3_risk, d3_reason = "PENDENTE", "Aguardando respostas..."
-if "Selecione..." not in [q3_1, q3_2, q3_3, q3_8]: # Checagem simplificada para ativar lógica
+if "Selecione..." not in [q3_1, q3_2, q3_3, q3_8]: 
     if q3_8 in ["Y", "PY"]: d3_risk, d3_reason = "CRITICAL", "Viés de seleção severo identificado."
     elif q3_1 in ["SN", "NI"] or q3_5 in ["Y", "PY"]:
         if q3_6 in ["Y", "PY"] or q3_7 in ["Y", "PY"]: d3_risk, d3_reason = "MODERATE", "Viés sério mitigado pela análise ou sensibilidade."
@@ -395,14 +400,12 @@ if "Selecione..." not in [q4_1, q4_4]:
     all_complete = (q4_1 in ["Y", "PY"] and q4_2 in ["Y", "PY"] and q4_3 in ["Y", "PY"])
     if all_complete: d4_risk, d4_reason = "LOW", "Dados completos para quase todos os participantes."
     else:
-        # Complete Case
         if q4_4 in ["Y", "PY", "NI"]:
             if q4_5 in ["Y", "PY", "NI"]:
                 if q4_6 == "SN": d4_risk, d4_reason = ("SERIOUS" if q4_11 not in ["Y", "PY"] else "MODERATE"), "Exclusão relacionada ao desfecho não explicada pelo modelo."
                 elif q4_6 in ["WN", "NI"]: d4_risk, d4_reason = "MODERATE", "Incerteza sobre a relação entre exclusão e desfecho."
                 else: d4_risk, d4_reason = "LOW", "Relação explicada pelo modelo."
             else: d4_risk, d4_reason = "LOW", "Exclusão não relacionada ao desfecho."
-        # Imputação (Simplificada)
         elif q4_9 == "SN": d4_risk, d4_reason = ("CRITICAL" if q4_11 not in ["Y", "PY"] else "SERIOUS"), "Método de imputação inadequado."
         elif q4_9 in ["WN", "NI"]: d4_risk, d4_reason = "MODERATE", "Dúvidas sobre a qualidade da imputação."
         else: d4_risk, d4_reason = "LOW", "Imputação ou método alternativo apropriado."
@@ -483,11 +486,14 @@ algo_risk = "PENDENTE"
 if "PENDENTE" in all_risks:
     st.warning("Responda todos os domínios para ver o cálculo.")
 else:
-    if "CRITICAL" in all_risks: algo_risk = "CRITICAL"
-    elif all_risks.count("SERIOUS") >= 2: algo_risk = "CRITICAL"
-    elif "SERIOUS" in all_risks: algo_risk = "SERIOUS"
-    elif all_risks.count("MODERATE") >= 3: algo_risk = "SERIOUS"
-    elif "MODERATE" in all_risks: algo_risk = "MODERATE"
+    # Se Domínio 1 estava em construção (N/A), ignoramos ele no cálculo geral por enquanto
+    valid_risks = [r for r in all_risks if r != "N/A"]
+    
+    if "CRITICAL" in valid_risks: algo_risk = "CRITICAL"
+    elif valid_risks.count("SERIOUS") >= 2: algo_risk = "CRITICAL"
+    elif "SERIOUS" in valid_risks: algo_risk = "SERIOUS"
+    elif valid_risks.count("MODERATE") >= 3: algo_risk = "SERIOUS"
+    elif "MODERATE" in valid_risks: algo_risk = "MODERATE"
     else: algo_risk = "LOW"
     
     st.markdown(f"""
@@ -496,7 +502,7 @@ else:
     </div>
     """, unsafe_allow_html=True)
 
-# --- JULGAMENTO DO PESQUISADOR (CAMPO NOVO) ---
+# --- JULGAMENTO DO PESQUISADOR ---
 st.markdown("### Validação pelo Pesquisador")
 st.caption("O algoritmo oferece uma sugestão padrão. O pesquisador pode alterar o julgamento final se houver justificativa (Guidance Note 17).")
 
