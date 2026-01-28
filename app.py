@@ -173,7 +173,7 @@ if is_variant_a:
             help=help_1_1
         )
         
-        # 1.4 SEMPRE visível (fundamental para decidir entre Sério/Crítico na falha de controle)
+        # 1.4 visível, mas nem sempre obrigatória para o cálculo final
         help_1_4 = """
         CONTEXTO: Controles Negativos.
         - Y / PY (Alerta): Controle negativo mostrou associação (viés).
@@ -188,7 +188,7 @@ if is_variant_a:
 
     # COLUNA 2
     with c2:
-        # REGRA DE VISIBILIDADE: 1.2 e 1.3 dependem EXCLUSIVAMENTE de 1.1 ser positivo (Y/PY/WN)
+        # Visibilidade dinâmica
         enable_details = q1_1 in ["Y", "PY", "WN"]
         
         if enable_details:
@@ -221,50 +221,53 @@ if is_variant_a:
     d1_risk = "PENDENTE"
     d1_reason = "Aguardando respostas..."
     
-    # --- ALGORITMO DOMÍNIO 1 ---
-    
-    # Checagem de preenchimento
-    questions_answered = (q1_1 != "Selecione...") and (q1_4 != "Selecione...")
-    if enable_details:
-        questions_answered = questions_answered and (q1_2 != "Selecione...") and (q1_3 != "Selecione...")
+    # --- ALGORITMO INTELIGENTE (CONDIÇÕES SUFICIENTES) ---
+    # O objetivo é dar o resultado assim que tivermos evidência suficiente, 
+    # sem obrigar o preenchimento de campos irrelevantes para o desfecho.
 
-    if questions_answered:
+    # 1. ATALHO: CRÍTICO (Falha Controle + Viés Confirmado)
+    if (q1_1 in ["SN", "NI"]) and (q1_4 in ["Y", "PY"]):
+        d1_risk = "CRITICAL"
+        d1_reason = "Determinante: Falha no controle (1.1) confirmada por controles negativos (1.4)."
+
+    # 2. ATALHO: SÉRIO (Ajuste Excessivo)
+    # Não precisamos da 1.4 aqui, pois o risco já é pelo menos SÉRIO.
+    elif (q1_1 in ["Y", "PY", "WN"]) and (q1_3 in ["Y", "PY"]):
+        d1_risk = "SERIOUS"
+        d1_reason = "Determinante: Ajuste excessivo de variáveis (1.3)."
+
+    # 3. ATALHO: SÉRIO (Erro de Medição Grave)
+    # Não precisamos da 1.4 aqui, pois 1.2 ruim já garante risco SÉRIO.
+    elif (q1_1 in ["Y", "PY", "WN"]) and (q1_2 in ["SN", "NI"]):
+        d1_risk = "SERIOUS"
+        d1_reason = "Determinante: Erro substancial na medição dos fatores (1.2)."
+
+    # 4. CÁLCULO RESIDUAL (Só exige preenchimento total se não caiu nos atalhos)
+    else:
+        # Verifica se temos o necessário para os outros casos
+        all_required_answered = False
         
-        # --- CAMINHO 1: FALHA SUBSTANCIAL NO CONTROLE (1.1 = SN/NI) ---
+        # Caminho Falha Controle: Precisa de 1.4 para decidir se é Sério (N/PN) ou Crítico (Y/PY)
         if q1_1 in ["SN", "NI"]:
-            if q1_4 in ["Y", "PY"]:
-                d1_risk = "CRITICAL"
-                d1_reason = "Falha no controle (1.1) confirmada por controles negativos (1.4)."
-            else:
+            if q1_4 != "Selecione...":
+                # Se chegou aqui, 1.4 não é Y/PY (pois cairia no atalho 1), logo é N/PN/NA -> Sério
                 d1_risk = "SERIOUS"
-                d1_reason = "Falha substancial no controle de fatores de confusão (1.1)."
+                d1_reason = "Falha substancial no controle (1.1). Controles negativos não agravaram para crítico."
 
-        # --- CAMINHO 2: CONTROLE TENTADO (1.1 = Y/PY/WN) ---
-        else:
-            # Lógica padrão para quando houve tentativa de controle
-            is_serious = False
-            
-            # Ajuste Excessivo
-            if q1_3 in ["Y", "PY"]:
-                d1_risk, d1_reason = "SERIOUS", "Ajuste excessivo de variáveis (1.3)."
-                is_serious = True
-            
-            # Erro de Medição Grave
-            elif q1_2 in ["SN", "NI"]:
-                d1_risk, d1_reason = "SERIOUS", "Erro substancial na medição dos fatores (1.2)."
-                is_serious = True
-            
-            # Controles Negativos Apitando (mesmo com bom controle inicial)
-            elif q1_4 in ["Y", "PY"]:
-                d1_risk, d1_reason = "SERIOUS", "Controles negativos sugerem viés residual."
-                is_serious = True
+        # Caminho Controle OK: Precisa de 1.2, 1.3 e 1.4 para decidir entre Baixo/Mod/Sério
+        elif q1_1 in ["Y", "PY", "WN"]:
+            if (q1_2 != "Selecione...") and (q1_3 != "Selecione...") and (q1_4 != "Selecione..."):
+                # Se chegou aqui, sabemos que:
+                # 1.3 não é Y/PY (Atalho 2)
+                # 1.2 não é SN/NI (Atalho 3)
                 
-            if not is_serious:
-                # Moderado
-                if q1_2 == "WN" or q1_1 == "WN":
+                # Check final: Controles Negativos
+                if q1_4 in ["Y", "PY"]:
+                    d1_risk = "SERIOUS"
+                    d1_reason = "Controles negativos sugerem viés, apesar do bom controle inicial."
+                elif q1_2 == "WN" or q1_1 == "WN":
                     d1_risk = "MODERATE"
                     d1_reason = "Preocupações menores com confusão residual ou erro de medição."
-                # Baixo
                 else:
                     d1_risk = "LOW"
                     d1_reason = "Baixo risco de viés devido a confusão."
