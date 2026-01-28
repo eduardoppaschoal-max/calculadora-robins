@@ -173,6 +173,7 @@ if is_variant_a:
             help=help_1_1
         )
         
+        # 1.4 SEMPRE visível (fundamental para decidir entre Sério/Crítico na falha de controle)
         help_1_4 = """
         CONTEXTO: Controles Negativos.
         - Y / PY (Alerta): Controle negativo mostrou associação (viés).
@@ -187,30 +188,10 @@ if is_variant_a:
 
     # COLUNA 2
     with c2:
-        # 1.3 Só aparece estritamente se 1.1 for positivo (Y/PY/WN)
-        if q1_1 in ["Y", "PY", "WN"]:
-            help_1_3 = """
-            CONTEXTO: Ajuste Excessivo (Over-adjustment).
-            - Y / PY (Risco): Controlaram mediadores ou colisores.
-            - N / PN (Ideal): Não controlaram variáveis indevidas.
-            """
-            q1_3 = st.selectbox(
-                "1.3 Os autores controlaram alguma variável pós-intervenção que poderia ter sido afetada pela intervenção?", 
-                ["Selecione...", "Y", "PY", "N", "PN", "NI", "NA"],
-                help=help_1_3
-            )
-        else:
-            q1_3 = "NA"
-            
-        # Lógica de Exibição da 1.2
-        # Aparece se 1.1 for bom OU se 1.1 for ruim mas 1.4 for neutro (Caminho para tentar salvar o Crítico)
-        show_q1_2 = False
-        if q1_1 in ["Y", "PY", "WN"]:
-            show_q1_2 = True
-        elif q1_1 in ["SN", "NI"] and q1_4 in ["N", "PN", "NA"]:
-            show_q1_2 = True 
-            
-        if show_q1_2:
+        # REGRA DE VISIBILIDADE: 1.2 e 1.3 dependem EXCLUSIVAMENTE de 1.1 ser positivo (Y/PY/WN)
+        enable_details = q1_1 in ["Y", "PY", "WN"]
+        
+        if enable_details:
             help_1_2 = """
             CONTEXTO: Validade das medidas usadas.
             - Y / PY: Medidas válidas/confiáveis usadas.
@@ -222,81 +203,71 @@ if is_variant_a:
                 ["Selecione...", "Y", "PY", "WN", "SN", "NI", "NA"],
                 help=help_1_2
             )
+            
+            help_1_3 = """
+            CONTEXTO: Ajuste Excessivo (Over-adjustment).
+            - Y / PY (Risco): Controlaram mediadores ou colisores.
+            - N / PN (Ideal): Não controlaram variáveis indevidas.
+            """
+            q1_3 = st.selectbox(
+                "1.3 Os autores controlaram alguma variável pós-intervenção que poderia ter sido afetada pela intervenção?", 
+                ["Selecione...", "Y", "PY", "N", "PN", "NI", "NA"],
+                help=help_1_3
+            )
         else:
             q1_2 = "NA"
+            q1_3 = "NA"
 
     d1_risk = "PENDENTE"
     d1_reason = "Aguardando respostas..."
     
-    # --- ALGORITMO OTIMIZADO (EARLY EXIT) ---
-    # Verifica condições fatais ANTES de exigir preenchimento completo
+    # --- ALGORITMO DOMÍNIO 1 ---
+    
+    # Checagem de preenchimento
+    questions_answered = (q1_1 != "Selecione...") and (q1_4 != "Selecione...")
+    if enable_details:
+        questions_answered = questions_answered and (q1_2 != "Selecione...") and (q1_3 != "Selecione...")
 
-    # 1. ATALHO CRÍTICO: Falha de controle + Viés Confirmado
-    if (q1_1 in ["SN", "NI"]) and (q1_4 in ["Y", "PY"]):
-        d1_risk = "CRITICAL"
-        d1_reason = "Determinante: Falha no controle (1.1) confirmada por controles negativos (1.4)."
-
-    # 2. ATALHO SÉRIO: Ajuste Excessivo (Requer 1.3 preenchida)
-    elif (q1_1 in ["Y", "PY", "WN"]) and (q1_3 in ["Y", "PY"]):
-        d1_risk = "SERIOUS"
-        d1_reason = "Determinante: Ajuste excessivo de variáveis (1.3)."
-
-    # 3. ATALHO SÉRIO: Erro de Medição (Quando 1.3 já está OK ou NA)
-    # Nota: Se 1.3 for Selecione..., não entra aqui, cai no 'else' pendente
-    elif (q1_1 in ["Y", "PY", "WN"]) and (q1_3 in ["N", "PN", "NI", "NA"]) and (q1_2 in ["SN", "NI"]):
-        d1_risk = "SERIOUS"
-        d1_reason = "Determinante: Erro substancial na medição dos fatores (1.2)."
-
-    # --- CÁLCULO RESTANTE (Só executa se não caiu nos atalhos acima) ---
-    else:
-        # Verifica se o RESTO necessário está preenchido
-        questions_answered = True
-        if q1_1 == "Selecione...": questions_answered = False
-        if q1_4 == "Selecione...": questions_answered = False
-        if show_q1_2 and q1_2 == "Selecione...": questions_answered = False
-        if q1_1 in ["Y", "PY", "WN"] and q1_3 == "Selecione...": questions_answered = False
-
-        if questions_answered:
-            is_critical = False
-            is_serious = False
-
-            # --- VERIFICAÇÃO DE OUTROS CAMINHOS CRÍTICOS ---
-            # Caminho Inferior: Falha de Controle + Medição Ruim
-            if (q1_1 in ["SN", "NI"]) and (q1_4 in ["N", "PN", "NA"]) and (q1_2 in ["SN", "NI", "NA", "WN"]):
+    if questions_answered:
+        
+        # --- CAMINHO 1: FALHA SUBSTANCIAL NO CONTROLE (1.1 = SN/NI) ---
+        if q1_1 in ["SN", "NI"]:
+            if q1_4 in ["Y", "PY"]:
                 d1_risk = "CRITICAL"
-                d1_reason = "Falha substancial no controle (1.1) agravada por medição insuficiente (1.2)."
-                is_critical = True
+                d1_reason = "Falha no controle (1.1) confirmada por controles negativos (1.4)."
+            else:
+                d1_risk = "SERIOUS"
+                d1_reason = "Falha substancial no controle de fatores de confusão (1.1)."
 
-            if not is_critical:
-                # --- VERIFICAÇÃO DE OUTROS CAMINHOS SÉRIOS ---
-                # Erro de Medição com Início WN
-                if (q1_1 == "WN") and (q1_2 in ["SN", "NI"]):
-                    d1_risk = "SERIOUS"
-                    d1_reason = "Erro substancial na medição dos fatores (1.2)."
-                    is_serious = True
+        # --- CAMINHO 2: CONTROLE TENTADO (1.1 = Y/PY/WN) ---
+        else:
+            # Lógica padrão para quando houve tentativa de controle
+            is_serious = False
+            
+            # Ajuste Excessivo
+            if q1_3 in ["Y", "PY"]:
+                d1_risk, d1_reason = "SERIOUS", "Ajuste excessivo de variáveis (1.3)."
+                is_serious = True
+            
+            # Erro de Medição Grave
+            elif q1_2 in ["SN", "NI"]:
+                d1_risk, d1_reason = "SERIOUS", "Erro substancial na medição dos fatores (1.2)."
+                is_serious = True
+            
+            # Controles Negativos Apitando (mesmo com bom controle inicial)
+            elif q1_4 in ["Y", "PY"]:
+                d1_risk, d1_reason = "SERIOUS", "Controles negativos sugerem viés residual."
+                is_serious = True
                 
-                # Controles Negativos Apitando (Início Bom)
-                elif (q1_1 in ["Y", "PY", "WN"]) and (q1_4 in ["Y", "PY"]):
-                    d1_risk = "SERIOUS"
-                    d1_reason = "Controles negativos sugerem viés, apesar do bom controle inicial."
-                    is_serious = True
-
-                # Falha de Controle Salva pela Medição
-                elif (q1_1 in ["SN", "NI"]) and (q1_4 in ["N", "PN", "NA"]) and (q1_2 in ["Y", "PY"]):
-                    d1_risk = "SERIOUS"
-                    d1_reason = "Falha no controle (1.1) mitigada por medição válida do restante (1.2)."
-                    is_serious = True
-                
-                if not is_serious:
-                    # --- RISCO MODERADO ---
-                    if q1_2 == "WN" or q1_1 == "WN":
-                        d1_risk = "MODERATE"
-                        d1_reason = "Preocupações menores com confusão residual ou erro de medição."
-                    
-                    # --- BAIXO RISCO ---
-                    else:
-                        d1_risk = "LOW"
-                        d1_reason = "Baixo risco de viés devido a confusão."
+            if not is_serious:
+                # Moderado
+                if q1_2 == "WN" or q1_1 == "WN":
+                    d1_risk = "MODERATE"
+                    d1_reason = "Preocupações menores com confusão residual ou erro de medição."
+                # Baixo
+                else:
+                    d1_risk = "LOW"
+                    d1_reason = "Baixo risco de viés devido a confusão."
 
     risks["D1"] = d1_risk
     reasons["D1"] = d1_reason
