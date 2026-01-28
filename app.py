@@ -154,9 +154,9 @@ st.header("Domínio 1: Viés devido a Confusão")
 if is_variant_a:
     st.caption("Variante A (Intention-to-treat)")
     c1, c2 = st.columns(2)
-    
-    # ATENÇÃO: Tudo abaixo de 'with c1:' precisa estar recuado (indentado)
-with c1:
+
+    # COLUNA 1
+    with c1:
         # --- PERGUNTA 1.1 ---
         help_1_1 = """
         CONTEXTO: Fatores da avaliação preliminar.
@@ -164,45 +164,59 @@ with c1:
         - WN (Não, não substancial): A maioria foi controlada. Viés residual provável é pequeno.
         - SN (Não, substancial): Fator importante NÃO controlado com provável impacto no resultado.
         """
-        
         q1_1 = st.selectbox(
-            "1.1 Controlou todos fatores importantes?", 
+            "1.1 Os autores controlaram todos os importantes fatores de confusão que isso se mostrou necessário?", 
             ["Selecione...", "Y", "PY", "WN", "SN", "NI"], 
             help=help_1_1
         )
         
         # --- PERGUNTA 1.2 (CONDICIONAL) ---
-        # Só aparece se 1.1 for Y, PY ou WN
         if q1_1 in ["Y", "PY", "WN"]:
             help_1_2 = """
             CONTEXTO: Validade das medidas usadas.
-            - Verifique se as medidas são válidas (cite protocolo/referências).
-            - Se a validade não for explícita, avalie a subjetividade.
-            - Responda Y/PY se medidas forem confiáveis ou se não houver fatores de confusão.
+            - Y / PY: Medidas válidas/confiáveis usadas (conforme protocolo/referências) OU não havia fatores de confusão.
+            - Se a validade não for declarada, julgue a subjetividade da medida.
             """
-            
             q1_2 = st.selectbox(
-                "1.2 Fatores medidos validamente?", 
-                ["Selecione...", "Y", "PY", "WN", "SN", "NI"], # Removi NA da lista pois agora a lógica cuida disso
+                "1.2 Se Y/PY/WN para 1.1: Os fatores de confusão que foram controlados (e para os quais o controle era necessário) foram medidos de forma válida e confiável pelas variáveis disponíveis neste estudo?", 
+                ["Selecione...", "Y", "PY", "WN", "SN", "NI"],
                 help=help_1_2
             )
         else:
-            # Se a condição não for atendida, o valor é automaticamente NA
             q1_2 = "NA"
+
+    # COLUNA 2
     with c2:
-        q1_3 = st.selectbox(
-            "1.3 Controlou variáveis pós-intervenção?", 
-            ["Selecione...", "NA", "Y", "PY", "PN", "N", "NI"]
-        )
+        # --- PERGUNTA 1.3 ---
+        # A pergunta 1.3 também depende tecnicamente de 1.1 ser positiva (segundo seu texto "Se Y/PY/WN para 1.1"), 
+        # mas no código original ela estava sempre visível. Vou manter a lógica visual de 1.2 para ela também?
+        # Pelo texto da sua pergunta, ela sugere condicionalidade. Vou aplicar a mesma lógica de ocultar se 1.1 for negativo.
+        
+        if q1_1 in ["Y", "PY", "WN"]:
+            q1_3 = st.selectbox(
+                "1.3 Se Y/PY/WN para 1.1: Os autores controlaram alguma variável pósintervenção que poderia ter sido afetada pela intervenção?", 
+                ["Selecione...", "NA", "Y", "PY", "PN", "N", "NI"]
+            )
+        else:
+            q1_3 = "NA" # Se falhou em 1.1, a discussão de pós-intervenção perde sentido prático para o risco (já é sério).
+        
+        # --- PERGUNTA 1.4 ---
         q1_4 = st.selectbox(
-            "1.4 Controles negativos sugerem viés?", 
+            "1.4 O uso de controles negativos, análise quantitativa de viés ou outras considerações sugeriram a presença de fatores de confusão não controlados significativos?", 
             ["Selecione...", "N", "PN", "Y", "PY"]
         )
     
     d1_risk, d1_reason = "PENDENTE", "Aguardando respostas..."
     
     # Lógica de Decisão (Algoritmo)
-    if "Selecione..." not in [q1_1, q1_2, q1_3, q1_4]:
+    questions_answered = (q1_1 != "Selecione...") and \
+                         (q1_4 != "Selecione...")
+                         # 1.2 e 1.3 podem ser "NA" ou "Selecione...", precisamos cuidar disso:
+    
+    if q1_1 in ["Y", "PY", "WN"]:
+        questions_answered = questions_answered and (q1_2 != "Selecione...") and (q1_3 != "Selecione...")
+
+    if questions_answered:
         if q1_4 in ["Y", "PY"]: 
             d1_risk, d1_reason = "CRITICAL", "Controles negativos indicam viés de confusão não controlada séria."
         elif q1_1 in ["SN", "NI"]: 
@@ -219,7 +233,6 @@ with c1:
     risks["D1"] = d1_risk
     reasons["D1"] = d1_reason
     
-    # Salva dados para o relatório
     report_data["domains"]["Domínio 1"] = {
         "risk": d1_risk, 
         "reason": d1_reason, 
