@@ -156,8 +156,8 @@ if is_variant_a:
     c1, c2 = st.columns(2)
     
     # ATENÇÃO: Tudo abaixo de 'with c1:' precisa estar recuado (indentado)
-    with c1:
-        # Texto de ajuda (Tooltip) para 1.1
+with c1:
+        # --- PERGUNTA 1.1 ---
         help_1_1 = """
         CONTEXTO: Fatores da avaliação preliminar.
         - Y / PY: Todos fatores importantes foram controlados adequadamente.
@@ -168,14 +168,27 @@ if is_variant_a:
         q1_1 = st.selectbox(
             "1.1 Controlou todos fatores importantes?", 
             ["Selecione...", "Y", "PY", "WN", "SN", "NI"], 
-            help=help_1_1 # O tooltip entra aqui
+            help=help_1_1
         )
         
-        q1_2 = st.selectbox(
-            "1.2 Fatores medidos validamente?", 
-            ["Selecione...", "NA", "Y", "PY", "WN", "SN", "NI"]
-        )
-
+        # --- PERGUNTA 1.2 (CONDICIONAL) ---
+        # Só aparece se 1.1 for Y, PY ou WN
+        if q1_1 in ["Y", "PY", "WN"]:
+            help_1_2 = """
+            CONTEXTO: Validade das medidas usadas.
+            - Verifique se as medidas são válidas (cite protocolo/referências).
+            - Se a validade não for explícita, avalie a subjetividade.
+            - Responda Y/PY se medidas forem confiáveis ou se não houver fatores de confusão.
+            """
+            
+            q1_2 = st.selectbox(
+                "1.2 Fatores medidos validamente?", 
+                ["Selecione...", "Y", "PY", "WN", "SN", "NI"], # Removi NA da lista pois agora a lógica cuida disso
+                help=help_1_2
+            )
+        else:
+            # Se a condição não for atendida, o valor é automaticamente NA
+            q1_2 = "NA"
     with c2:
         q1_3 = st.selectbox(
             "1.3 Controlou variáveis pós-intervenção?", 
