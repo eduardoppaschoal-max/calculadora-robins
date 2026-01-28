@@ -682,32 +682,195 @@ display_risk_card("Domínio 2", d2_risk, d2_reason)
 
 st.divider()
 
-# --- DOMÍNIO 3: SELEÇÃO ---
-st.header("Domínio 3: Viés de Seleção")
-c1, c2 = st.columns(2)
-with c1:
-    q3_1 = st.selectbox("3.1 Follow-up coincide com início?", ["Selecione...", "Y", "PY", "WN", "SN", "NI"])
-    q3_2 = st.selectbox("3.2 Exclusão de eventos iniciais?", ["Selecione...", "Y", "PY", "PN", "N", "NI"])
-    q3_3 = st.selectbox("3.3 Seleção baseada em características pós-início?", ["Selecione...", "Y", "PY", "PN", "N", "NI"])
-    q3_4 = st.selectbox("3.4 Variáveis associadas à intervenção?", ["Selecione...", "NA", "Y", "PY", "PN", "N", "NI"])
-with c2:
-    q3_5 = st.selectbox("3.5 Variáveis influenciadas pelo desfecho?", ["Selecione...", "NA", "Y", "PY", "PN", "N", "NI"])
-    q3_6 = st.selectbox("3.6 Análise corrigiu viés?", ["Selecione...", "NA", "Y", "PY", "PN", "N", "NI"])
-    q3_7 = st.selectbox("3.7 Sensibilidade mostrou impacto mínimo?", ["Selecione...", "NA", "Y", "PY", "PN", "N", "NI"])
-    q3_8 = st.selectbox("3.8 Vieses severos?", ["Selecione...", "NA", "Y", "PY", "PN", "N", "NI"])
+# --- DOMÍNIO 3: SELEÇÃO DOS PARTICIPANTES ---
+st.header("Domínio 3: Viés devido à Seleção dos Participantes")
 
-d3_risk, d3_reason = "PENDENTE", "Aguardando respostas..."
-if "Selecione..." not in [q3_1, q3_2, q3_3, q3_8]: 
-    if q3_8 in ["Y", "PY"]: d3_risk, d3_reason = "CRITICAL", "Viés de seleção severo identificado."
-    elif q3_1 in ["SN", "NI"] or q3_5 in ["Y", "PY"]:
-        if q3_6 in ["Y", "PY"] or q3_7 in ["Y", "PY"]: d3_risk, d3_reason = "MODERATE", "Viés sério mitigado pela análise ou sensibilidade."
-        else: d3_risk, d3_reason = "SERIOUS", "Falha no início do follow-up ou seleção influenciada pelo desfecho."
-    elif q3_1 == "WN" or q3_2 in ["Y", "PY"] or (q3_3 in ["Y", "PY"] and q3_4 in ["Y", "PY"]): d3_risk, d3_reason = "MODERATE", "Problemas moderados de seleção (início tardio ou exclusão)."
-    else: d3_risk, d3_reason = "LOW", "Seleção apropriada."
+st.markdown("""
+Este domínio avalia se a exclusão de participantes ou o tempo de acompanhamento introduz viés. 
+O Bloco C (Correção) só será ativado se forem detectados problemas sérios nas partes A ou B.
+""")
 
+# Layout Bipartido: Coluna A (Início) e Coluna B (Pós-Início)
+c1_d3, c2_d3 = st.columns(2)
+
+# --- PARTE A: Início do Acompanhamento ---
+with c1_d3:
+    st.subheader("A. Início do Acompanhamento")
+    
+    help_3_1 = """
+    O acompanhamento coincidiu com o início da intervenção?
+    - Y/PY: Sim (Ideal).
+    - WN: Não, lacuna irrelevante.
+    - SY: Início muito tardio (Risco Sério).
+    """
+    q3_1 = st.selectbox(
+        "3.1 Os participantes foram acompanhados desde o início da intervenção?",
+        ["Selecione...", "Y", "PY", "WN", "SY", "NI"],
+        help=help_3_1
+    )
+
+    q3_2 = "NA"
+    if q3_1 in ["Y", "PY"]:
+        help_3_2 = """
+        Eventos precoces foram excluídos?
+        - N/PN: Não (Bom).
+        - Y/PY: Sim (Risco Moderado).
+        """
+        q3_2 = st.selectbox(
+            "3.2 Os eventos de desfecho precoces foram excluídos da análise?",
+            ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+            help=help_3_2
+        )
+
+# --- PARTE B: Seleção Pós-Início ---
+with c2_d3:
+    st.subheader("B. Seleção Pós-Início")
+    
+    help_3_3 = """
+    A inclusão foi baseada em características medidas APÓS o início da intervenção?
+    - N/PN: Não (Ideal).
+    - Y/PY: Sim (Potencial Viés).
+    """
+    q3_3 = st.selectbox(
+        "3.3 A seleção foi baseada em características pós-intervenção?",
+        ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+        help=help_3_3
+    )
+
+    q3_4 = "NA"
+    q3_5 = "NA"
+    
+    if q3_3 in ["Y", "PY"]:
+        help_3_4 = """
+        Essas características estão associadas à intervenção?
+        - N/PN: Não (Risco Baixo).
+        - Y/PY: Sim.
+        - NI: Sem informação (Risco Moderado).
+        """
+        q3_4 = st.selectbox(
+            "3.4 As variáveis de seleção estão associadas à intervenção?",
+            ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+            help=help_3_4
+        )
+        
+        if q3_4 in ["Y", "PY", "NI"]:
+            help_3_5 = """
+            Essas variáveis são influenciadas pelo desfecho?
+            - Y/PY: Sim (Risco Sério).
+            - N/PN/NI: Não ou Sem Info (Risco Moderado).
+            """
+            q3_5 = st.selectbox(
+                "3.5 As variáveis de seleção são influenciadas pelo desfecho?",
+                ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+                help=help_3_5
+            )
+
+# --- CÁLCULO PROVISÓRIO (Para decidir se mostra o Bloco C) ---
+temp_risk_a = "PENDING"
+temp_risk_b = "PENDING"
+
+# Lógica Risco A
+if q3_1 == "SY": temp_risk_a = "SERIOUS"
+elif q3_1 in ["WN", "NI"]: temp_risk_a = "MODERATE"
+elif q3_1 in ["Y", "PY"]:
+    if q3_2 in ["Y", "PY"]: temp_risk_a = "MODERATE"
+    elif q3_2 in ["N", "PN", "NI"]: temp_risk_a = "LOW"
+
+# Lógica Risco B
+if q3_3 in ["N", "PN", "NI"]: temp_risk_b = "LOW"
+elif q3_3 in ["Y", "PY"]:
+    if q3_4 in ["N", "PN"]: temp_risk_b = "LOW"
+    elif q3_4 in ["NI"]: temp_risk_b = "MODERATE"
+    elif q3_4 in ["Y", "PY"]:
+        if q3_5 in ["Y", "PY"]: temp_risk_b = "SERIOUS"
+        elif q3_5 in ["N", "PN", "NI"]: temp_risk_b = "MODERATE"
+
+# Combinação Provisória
+is_provisional_serious = (temp_risk_a == "SERIOUS") or (temp_risk_b == "SERIOUS")
+
+# --- BLOCO C: CORREÇÃO (Condicional) ---
+q3_6 = "NA"
+q3_7 = "NA"
+q3_8 = "NA"
+
+if is_provisional_serious:
+    st.divider()
+    st.markdown("###### C. Análise e Correção (Ativado: Risco Sério Detectado)")
+    st.caption("Problemas sérios identificados. Responda abaixo para verificar correção.")
+
+    help_3_6 = "A análise usou métodos (ex: IPW, ajuste) para corrigir o viés de seleção?"
+    q3_6 = st.selectbox(
+        "3.6 A análise corrigiu o viés de seleção?",
+        ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+        help=help_3_6
+    )
+
+    if q3_6 in ["N", "PN", "NI"]:
+        q3_7 = st.selectbox(
+            "3.7 Análises de sensibilidade demonstram impacto mínimo do viés?",
+            ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+            help="Se Sim (Y/PY), o risco cai para Moderado."
+        )
+        
+        if q3_7 in ["N", "PN", "NI"]:
+            q3_8 = st.selectbox(
+                "3.8 O viés de seleção é provável de ser severo?",
+                ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+                help="Se Sim (Y/PY), o risco se torna CRÍTICO."
+            )
+
+# --- ALGORITMO FINAL DOMÍNIO 3 ---
+d3_risk = "PENDENTE"
+d3_reason = "Aguardando respostas..."
+
+# Verifica se o fluxo foi completado
+flow_complete = False
+if temp_risk_a != "PENDING" and temp_risk_b != "PENDING":
+    if not is_provisional_serious:
+        flow_complete = True
+    else:
+        # Se for sério, precisa ter respondido até onde o fluxo de correção leva
+        if q3_6 in ["Y", "PY"]: flow_complete = True
+        elif q3_6 in ["N", "PN", "NI"] and q3_7 in ["Y", "PY"]: flow_complete = True
+        elif q3_6 in ["N", "PN", "NI"] and q3_7 in ["N", "PN", "NI"] and q3_8 != "Selecione...": flow_complete = True
+
+if flow_complete:
+    # 1. Baseado na combinação inicial (Se não for sério, é o pior entre A e B)
+    if not is_provisional_serious:
+        if temp_risk_a == "MODERATE" or temp_risk_b == "MODERATE":
+            d3_risk = "MODERATE"
+            d3_reason = f"Risco Moderado em A ({temp_risk_a}) ou B ({temp_risk_b})."
+        else:
+            d3_risk = "LOW"
+            d3_reason = "Baixo risco de viés de seleção."
+            
+    # 2. Se entrou no fluxo de correção (Serious)
+    else:
+        base_reason = f"Viés Sério identificado (A: {temp_risk_a}, B: {temp_risk_b})."
+        
+        if q3_6 in ["Y", "PY"]:
+            d3_risk = "MODERATE"
+            d3_reason = base_reason + " Corrigido pela análise (3.6)."
+        elif q3_7 in ["Y", "PY"]:
+            d3_risk = "MODERATE"
+            d3_reason = base_reason + " Mitigado por análise de sensibilidade (3.7)."
+        elif q3_8 in ["Y", "PY"]:
+            d3_risk = "CRITICAL"
+            d3_reason = base_reason + " Viés severo confirmado e não corrigido."
+        else:
+            d3_risk = "SERIOUS"
+            d3_reason = base_reason + " Não corrigido, mas não considerado severo/crítico."
+
+# Salva resultado
 risks["D3"] = d3_risk
 reasons["D3"] = d3_reason
-report_data["domains"]["Domínio 3"] = {"risk": d3_risk, "reason": d3_reason, "answers": {"3.1": q3_1, "3.2": q3_2, "3.3": q3_3, "3.4": q3_4, "3.5": q3_5, "3.8": q3_8}}
+
+report_data["domains"]["Domínio 3"] = {
+    "risk": d3_risk, 
+    "reason": d3_reason, 
+    "answers": {"3.1": q3_1, "3.2": q3_2, "3.3": q3_3, "3.4": q3_4, "3.5": q3_5, "3.6": q3_6, "3.7": q3_7, "3.8": q3_8}
+}
+
 display_risk_card("Domínio 3", d3_risk, d3_reason)
 st.divider()
 
