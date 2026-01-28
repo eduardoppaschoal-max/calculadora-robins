@@ -307,27 +307,25 @@ if is_variant_a:
                         is_serious = True
                 
                 if not is_critical and not is_serious:
-                    # MODERADO
                     if q1_2 == "WN" or q1_1 == "WN":
                         d1_risk = "MODERATE"
                         d1_reason = "Preocupações menores com confusão residual ou erro de medição."
-                    # BAIXO
                     else:
                         d1_risk = "LOW"
                         d1_reason = "Baixo risco de viés devido a confusão."
 
-    # --- AJUSTE DE TEXTO (TRADUÇÃO) ---
+    # --- TRADUÇÃO DO RESULTADO (SÓ PARA DOMÍNIO 1) ---
     if d1_risk == "LOW":
         d1_risk = "Baixo risco, exceto por preocupações com confusão"
 
-    # Salva nos dados (agora com o texto longo)
     risks["D1"] = d1_risk
     reasons["D1"] = d1_reason
     
+    # Observe que aqui listamos EXATAMENTE as variáveis da Variante A
     report_data["domains"]["Domínio 1"] = {
         "risk": d1_risk, 
         "reason": d1_reason, 
-        "answers": {"1.1": q1_1, ...} # (Mantenha as respostas originais da variante)
+        "answers": {"1.1": q1_1, "1.2": q1_2, "1.3": q1_3, "1.4": q1_4}
     }
     
     display_risk_card("Domínio 1", d1_risk, d1_reason)
@@ -477,18 +475,20 @@ else:
                             d1_risk = "LOW"
                             d1_reason = "Baixo risco de viés (G-methods aplicados corretamente)."
 
-    # --- AJUSTE DE TEXTO (TRADUÇÃO) ---
+# --- AJUSTE DE TEXTO (TRADUÇÃO) ---
+    # Garante que o texto exibido seja o padrão do ROBINS-I para Domínio 1
     if d1_risk == "LOW":
         d1_risk = "Baixo risco, exceto por preocupações com confusão"
 
-    # Salva nos dados (agora com o texto longo)
+    # Salva nos dados globais
     risks["D1"] = d1_risk
     reasons["D1"] = d1_reason
     
+    # CORREÇÃO AQUI: Listamos explicitamente todas as variáveis da Variante B
     report_data["domains"]["Domínio 1"] = {
         "risk": d1_risk, 
         "reason": d1_reason, 
-        "answers": {"1.1": q1_1, ...} # (Mantenha as respostas originais da variante)
+        "answers": {"1.1": q1_1, "1.2": q1_2, "1.3": q1_3, "1.4": q1_4, "1.5": q1_5}
     }
     
     display_risk_card("Domínio 1", d1_risk, d1_reason)
