@@ -174,15 +174,13 @@ if is_variant_a:
             help=help_1_1
         )
         
-        # --- PERGUNTA 1.2 (CONDICIONAL) ---
-        # A pergunta 1.2 é relevante mesmo se 1.1 for SN/NI (para decidir entre Sério vs Crítico)
-        # Por isso, vamos mostrá-la sempre, exceto se o usuário ainda não respondeu 1.1
-        if q1_1 != "Selecione...":
+        # --- PERGUNTA 1.2 (CONDICIONAL RESTRITA) ---
+        if q1_1 in ["Y", "PY", "WN"]:
             help_1_2 = """
             CONTEXTO: Validade das medidas usadas.
             - Y / PY: Medidas válidas/confiáveis usadas.
             - WN / SN: Medidas com problemas de validade ou confiabilidade.
-            - NA: Se não havia fatores de confusão para controlar.
+            - NA: Se não havia fatores de confusão.
             """
             q1_2 = st.selectbox(
                 "1.2 Os fatores de confusão que foram controlados foram medidos de forma válida e confiável?", 
@@ -190,12 +188,11 @@ if is_variant_a:
                 help=help_1_2
             )
         else:
-            q1_2 = "Selecione..."
+            q1_2 = "NA"
 
     # COLUNA 2
     with c2:
-        # --- PERGUNTA 1.3 ---
-        # Relevante principalmente se 1.1 for Y/PY/WN
+        # --- PERGUNTA 1.3 (CONDICIONAL) ---
         if q1_1 in ["Y", "PY", "WN"]:
             help_1_3 = """
             CONTEXTO: Ajuste Excessivo (Over-adjustment).
@@ -208,7 +205,7 @@ if is_variant_a:
                 help=help_1_3
             )
         else:
-            q1_3 = "NA" # Se 1.1 já é SN, o ajuste excessivo é menos prioritário na árvore de decisão, mas o risco já será alto.
+            q1_3 = "NA"
         
         # --- PERGUNTA 1.4 ---
         help_1_4 = """
@@ -224,46 +221,65 @@ if is_variant_a:
     
     d1_risk, d1_reason = "PENDENTE", "Aguardando respostas..."
     
-    # --- ALGORITMO DETERMINÍSTICO (Baseado no Fluxograma Oficial) ---
-    questions_answered = (q1_1 != "Selecione...") and (q1_2 != "Selecione...") and (q1_4 != "Selecione...")
+    # --- ALGORITMO DOMÍNIO 1 (Atualizado) ---
+    # Verifica preenchimento
+    questions_answered = (q1_1 != "Selecione...") and (q1_4 != "Selecione...")
     if q1_1 in ["Y", "PY", "WN"]:
-        questions_answered = questions_answered and (q1_3 != "Selecione...")
+        questions_answered = questions_answered and (q1_2 != "Selecione...") and (q1_3 != "Selecione...")
 
     if questions_answered:
-        # 1. Checagem de Controles Negativos (Atalho para Crítico)
-        if q1_4 in ["Y", "PY"]:
+        # --- LÓGICA DE RISCO CRÍTICO (Prioridade Máxima) ---
+        is_critical = False
+        
+        # Regra 1: 1.1 SN/NI e 1.4 Y/PY
+        if (q1_1 in ["SN", "NI"]) and (q1_4 in ["Y", "PY"]):
             d1_risk = "CRITICAL"
-            d1_reason = "Controles negativos indicam viés de confusão não controlada séria."
-        
-        # 2. Caminho da Falha de Controle (1.1 = SN/NI)
-        elif q1_1 in ["SN", "NI"]:
-            if q1_2 in ["Y", "PY"]:
-                d1_risk = "SERIOUS"
-                d1_reason = "Falha substancial no controle (1.1), mas medição válida dos fatores controlados (1.2)."
-            else:
-                d1_risk = "CRITICAL" # A Tempestade Perfeita
-                d1_reason = "Falha no controle (1.1) agravada por medição ruim ou desconhecida (1.2)."
-        
-        # 3. Caminho do Controle Razoável (1.1 = Y/PY/WN)
-        else:
-            # Verifica Ajuste Excessivo (1.3)
+            d1_reason = "Falha no controle (1.1) confirmada por controles negativos (1.4)."
+            is_critical = True
+            
+        # Regra 2: 1.1 OK e 1.3 Y/PY e 1.4 Y/PY
+        elif (q1_1 in ["Y", "PY", "WN"]) and (q1_3 in ["Y", "PY"]) and (q1_4 in ["Y", "PY"]):
+            d1_risk = "CRITICAL"
+            d1_reason = "Ajuste excessivo (1.3) confirmado por controles negativos (1.4)."
+            is_critical = True
+            
+        # Regra 3: 1.1 OK e 1.3 Y/PY e 1.4 N/PN e 1.2 SN/WN/NI
+        elif (q1_1 in ["Y", "PY", "WN"]) and (q1_3 in ["Y", "PY"]) and (q1_4 in ["N", "PN"]) and (q1_2 in ["SN", "WN", "NI"]):
+            d1_risk = "CRITICAL"
+            d1_reason = "Ajuste excessivo (1.3) agravado por má medição dos fatores (1.2)."
+            is_critical = True
+
+        # Regra Adicional do Fluxograma (Tempestade Perfeita de Falha de Controle)
+        # 1.1 SN/NI e 1.4 N/PN e 1.2 SN/WN/NI (Implícito na lógica ROBINS-I se não houver ajuste excessivo)
+        elif (q1_1 in ["SN", "NI"]) and (q1_4 in ["N", "PN"]):
+            # Como 1.2 é NA (oculto), assumimos risco CRÍTICO ou SÉRIO. 
+            # Conservadoramente, falha substancial sem mitigação = CRITICAL.
+            d1_risk = "CRITICAL"
+            d1_reason = "Falha substancial no controle de fatores de confusão importantes."
+            is_critical = True
+
+        # --- SE NÃO FOR CRÍTICO, AVALIA OS OUTROS ---
+        if not is_critical:
+            # SÉRIO
             if q1_3 in ["Y", "PY"]:
                 d1_risk = "SERIOUS"
                 d1_reason = "Controle inadequado de variáveis pós-intervenção (over-adjustment)."
+            elif q1_2 in ["SN", "NI"]:
+                d1_risk = "SERIOUS"
+                d1_reason = "Erro de medição substancial nos fatores de confusão."
+            elif q1_1 in ["SN", "NI"]: # Se chegou aqui, é porque 1.4 é N/PN
+                 d1_risk = "SERIOUS"
+                 d1_reason = "Falha substancial no controle, mas sem confirmação de viés por controles negativos."
+            
+            # MODERADO
+            elif q1_2 == "WN" or q1_1 == "WN":
+                d1_risk = "MODERATE"
+                d1_reason = "Preocupações menores com confusão residual ou erro de medição."
+            
+            # BAIXO
             else:
-                # Verifica Medição (1.2)
-                if q1_2 in ["SN", "NI"]:
-                    d1_risk = "SERIOUS"
-                    d1_reason = "Controle tentado, mas erro de medição substancial nos fatores (1.2)."
-                elif q1_2 == "WN":
-                    d1_risk = "MODERATE"
-                    d1_reason = "Preocupações menores com erro de medição (1.2)."
-                elif q1_1 == "WN":
-                    d1_risk = "MODERATE"
-                    d1_reason = "Controle incompleto, mas viés residual provavelmente não substancial (1.1)."
-                else:
-                    d1_risk = "LOW"
-                    d1_reason = "Baixo risco de viés devido a confusão."
+                d1_risk = "LOW"
+                d1_reason = "Baixo risco de viés devido a confusão."
 
     risks["D1"] = d1_risk
     reasons["D1"] = d1_reason
