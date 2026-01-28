@@ -874,12 +874,12 @@ report_data["domains"]["Domínio 3"] = {
 display_risk_card("Domínio 3", d3_risk, d3_reason)
 st.divider()
 
-# --- DOMÍNIO 4: DADOS FALTANTES (LÓGICA VISUAL EXATA) ---
+# --- DOMÍNIO 4: DADOS FALTANTES (LÓGICA CORRIGIDA) ---
 st.header("Domínio 4: Viés devido a Dados Faltantes")
 
 st.markdown("""
 Este domínio avalia a integridade dos dados e a estratégia de análise.
-O algoritmo calcula o risco assim que uma conclusão é atingida, ocultando perguntas desnecessárias.
+O algoritmo calcula o risco assim que uma conclusão é atingida (Early Exit).
 """)
 
 # --- PASSO 1: TRIAGEM (4.1 a 4.3) ---
@@ -918,7 +918,6 @@ if missing_data:
     st.divider()
     st.subheader("Estratégia de Análise")
     
-    # 4.4 Aparece se houver dados faltantes
     q4_4 = st.selectbox(
         "4.4 A análise foi feita apenas com casos completos?",
         ["Selecione...", "Y", "PY", "PN", "N", "NI"],
@@ -943,21 +942,18 @@ if analysis_type == "COMPLETE_CASE":
     q4_5 = st.selectbox(
         "4.5 A exclusão está relacionada ao valor real do desfecho (MNAR)?",
         ["Selecione...", "Y", "PY", "PN", "N", "NI"],
-        help="Y/PY/NI: Risco alto (MNAR). Pula 4.6 e vai para 4.11.\nN/PN: Segue para 4.6."
+        help="N/PN: Não relacionado -> Baixo Risco (Early Exit).\nY/PY/NI: Possível viés -> Pergunta 4.6."
     )
     
-    # Lógica de Visibilidade: 4.6 só aparece se 4.5 for BOM (N/PN)
-    # Se 4.5 for RUIM (Y/PY/NI), já assumimos o problema e vamos para mitigação (4.11).
-    if q4_5 in ["N", "PN"]:
+    # Lógica Corrigida: 4.6 só aparece se 4.5 for RUIM (Y/PY/NI)
+    if q4_5 in ["Y", "PY", "NI"]:
         q4_6 = st.selectbox(
             "4.6 A relação entre perda e desfecho é explicada pelo modelo?",
             ["Selecione...", "Y", "PY", "WN", "NI", "SN"],
-            help="Y/PY: Leva a Baixo Risco (Early Exit).\nWN/NI/SN: Vai para 4.11."
+            help="Verifica se variáveis de ajuste corrigem o viés (MAR)."
         )
-    
-    # Gatilhos para 4.11 (Mitigação) neste ramo
-    if q4_5 in ["Y", "PY", "NI"]: need_4_11 = True
-    elif q4_6 in ["WN", "NI", "SN"]: need_4_11 = True
+        # Se precisou responder 4.6, precisaremos de 4.11 para confirmar
+        if q4_6 != "Selecione...": need_4_11 = True
 
 # ==========================================
 # RAMO B: IMPUTAÇÃO / OUTROS (4.4 N/PN)
@@ -977,7 +973,6 @@ elif analysis_type == "IMPUTATION_OR_OTHER":
             ["Selecione...", "Y", "PY", "PN", "N", "NI"]
         )
         
-        # 4.9 só aparece se premissas OK
         if q4_8 in ["Y", "PY"]:
             q4_9 = st.selectbox(
                 "4.9 A imputação foi apropriada?",
@@ -989,22 +984,20 @@ elif analysis_type == "IMPUTATION_OR_OTHER":
         if q4_8 in ["N", "PN", "NI"]: need_4_11 = True
         elif q4_9 in ["WN", "NI", "SN"]: need_4_11 = True
 
-    # Ramo B2: Outros Métodos (ex: IPW)
+    # Ramo B2: Outros Métodos
     elif q4_7 in ["N", "PN", "NI"]:
         q4_10 = st.selectbox(
             "4.10 Foi usado outro método apropriado (ex: IPW)?",
             ["Selecione...", "Y", "PY", "WN", "NI", "SN"],
             help="Y/PY: Leva a Baixo Risco (Early Exit)."
         )
-        # Gatilhos para 4.11
         if q4_10 in ["WN", "NI", "SN"]: need_4_11 = True
 
 # --- PASSO 4: EVIDÊNCIA DE NÃO-VIÉS (4.11) ---
-# Só aparece se houve falhas nos passos anteriores
 q4_11 = "NA"
 if need_4_11:
     st.divider()
-    help_4_11 = "Existem evidências (ex: análise de sensibilidade) de que o resultado NÃO é enviesado apesar dos problemas?"
+    help_4_11 = "Existem evidências (ex: análise de sensibilidade) de que o resultado NÃO é enviesado?"
     q4_11 = st.selectbox(
         "4.11 Existe evidência de que o resultado não é enviesado?",
         ["Selecione...", "Y", "PY", "PN", "N", "NI"],
@@ -1021,10 +1014,10 @@ if not missing_data:
         d4_risk = "LOW"
         d4_reason = "Dados completos para intervenção, desfecho e confundidores."
 
-# 2. Early Exit: Sucesso na Análise de Casos Completos
-elif analysis_type == "COMPLETE_CASE" and q4_6 in ["Y", "PY"]:
+# 2. Early Exit: Casos Completos -> Não relacionado ao desfecho (4.5 N/PN)
+elif analysis_type == "COMPLETE_CASE" and q4_5 in ["N", "PN"]:
     d4_risk = "LOW"
-    d4_reason = "Perda de dados explicada pelo modelo de análise (MAR)."
+    d4_reason = "Exclusão de participantes não relacionada ao desfecho (Baixo risco de viés)."
 
 # 3. Early Exit: Sucesso na Imputação
 elif q4_9 in ["Y", "PY"]:
@@ -1039,20 +1032,19 @@ elif q4_10 in ["Y", "PY"]:
 # 5. Caminhos de Falha / Mitigação (Requer 4.11)
 elif need_4_11 and q4_11 != "Selecione...":
     
-    # Identifica se veio de um "Strong No" (Erro Grave)
     came_from_strong_no = (q4_6 == "SN") or (q4_9 == "SN") or (q4_10 == "SN")
     
     if q4_11 in ["Y", "PY"]:
         if came_from_strong_no:
-            d4_risk = "SERIOUS" # SN + Mitigação = Serious (no diagrama)
-            d4_reason = "Erro metodológico grave mitigado parcialmente."
+            d4_risk = "SERIOUS" 
+            d4_reason = "Erro grave mitigado parcialmente."
         else:
             d4_risk = "MODERATE"
             d4_reason = "Problemas mitigados por análise de sensibilidade."
             
     elif q4_11 in ["N", "PN", "NI"]:
         if came_from_strong_no:
-            d4_risk = "CRITICAL" # SN + Sem Mitigação = Critical
+            d4_risk = "CRITICAL"
             d4_reason = "Falha metodológica grave sem evidência de robustez."
         else:
             d4_risk = "SERIOUS"
