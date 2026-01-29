@@ -135,7 +135,22 @@ with st.sidebar:
     st.divider()
     st.info("Ferramenta baseada no ROBINS-I V2 (Nov 2025).")
 
-st.title("ROBINS-I V2: Calculadora de Risco de Viés")
+# --- CABEÇALHO COM LOGO ---
+col_logo, col_titulo = st.columns([1, 5]) # Cria duas colunas: 1 parte para logo, 5 para texto
+
+with col_logo:
+    # IMPORTANTE: Você precisa ter um arquivo de imagem na mesma pasta do script
+    # Se não tiver imagem ainda, comente a linha abaixo para não dar erro
+    try:
+        st.image("sua_logo.png", width=120) 
+    except:
+        st.warning("Imagem 'sua_logo.png' não encontrada.")
+
+with col_titulo:
+    st.title("ROBINS-I V2: Avaliação de Risco de Viés")
+    st.markdown("**Ferramenta de Apoio à Decisão**")
+
+st.divider() # Linha visual para separar o cabeçalho do resto
 if study_id:
     st.subheader(f"Avaliando: {study_id}")
 
