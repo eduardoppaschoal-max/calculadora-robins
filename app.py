@@ -874,7 +874,7 @@ report_data["domains"]["Domínio 3"] = {
 display_risk_card("Domínio 3", d3_risk, d3_reason)
 st.divider()
 
-# --- DOMÍNIO 4: DADOS FALTANTES (Lógica Sequencial e Caminhos Rigorosos) ---
+# --- DOMÍNIO 4: DADOS FALTANTES (Textos Atualizados) ---
 st.header("Domínio 4: Viés devido a Dados Faltantes")
 
 st.markdown("""
@@ -892,12 +892,39 @@ q4_11 = "NA"
 # Sempre visíveis
 c1_d4, c2_d4 = st.columns(2)
 with c1_d4:
-    q4_1 = st.selectbox("4.1 Dados da intervenção completos?", ["Selecione...", "Y", "PY", "PN", "N", "NI"])
-    q4_3 = st.selectbox("4.3 Dados de confundidores completos?", ["Selecione...", "Y", "PY", "PN", "N", "NI"])
-with c2_d4:
-    q4_2 = st.selectbox("4.2 Dados do desfecho completos?", ["Selecione...", "Y", "PY", "PN", "N", "NI"])
+    help_4_1 = """A expressão “quase todos” deve ser interpretada como significando que o número de participantes excluídos da análise devido à falta de dados é tão pequeno que eles não teriam feito nenhuma diferença importante no efeito estimado da intervenção.
+Responda "NI" somente se o relatório do estudo não fornecer informações sobre a extensão dos dados faltantes. Essa situação geralmente leva à conclusão de que há um alto risco de viés devido à falta de dados.
+Note que esta questão se refere a dados efetivamente registrados no estudo. Dados imputados (ver questão 4.7) devem ser considerados dados faltantes no contexto desta questão."""
+    
+    q4_1 = st.selectbox(
+        "4.1 Os dados sobre o estado da intervenção estavam completos para todos, ou quase todos, os participantes?", 
+        ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+        help=help_4_1
+    )
 
-# Verifica integridade
+    help_4_3 = """A expressão “quase todos” deve ser interpretada como significando que o número de participantes excluídos da análise devido à falta de dados é tão pequeno que eles não teriam feito nenhuma diferença importante no efeito estimado da intervenção.
+Responda "NI" somente se o relatório do estudo não fornecer informações sobre a extensão dos dados faltantes. Essa situação geralmente leva à conclusão de que há um alto risco de viés devido à falta de dados.
+Note que esta questão se refere a dados efetivamente registrados no estudo. Dados imputados devem ser considerados dados faltantes no contexto desta questão."""
+    
+    q4_3 = st.selectbox(
+        "4.3 Os dados completos sobre variáveis de confusão importantes estavam disponíveis para todos, ou quase todos, os participantes?", 
+        ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+        help=help_4_3
+    )
+
+with c2_d4:
+    help_4_2 = """A expressão “quase todos” deve ser interpretada como significando que o número de participantes excluídos da análise devido à falta de dados é tão pequeno que eles não teriam feito nenhuma diferença importante no efeito estimado da intervenção.
+Para desfechos contínuos, dados completos de 95% (ou possivelmente 90%) dos participantes geralmente seriam suficientes. Para desfechos dicotômicos, a proporção necessária está diretamente ligada ao risco do evento de desfecho. Se o número observado de eventos de desfecho for muito maior do que o número de participantes com dados faltantes, o viés será necessariamente pequeno.
+Responda "NI" somente se o relatório do estudo não fornecer informações sobre a extensão dos dados faltantes. Essa situação geralmente leva à conclusão de que há um alto risco de viés devido à falta de dados.
+Note que esta questão se refere a dados efetivamente registrados no estudo. Dados imputados devem ser considerados dados faltantes no contexto desta questão."""
+    
+    q4_2 = st.selectbox(
+        "4.2 Os dados completos sobre o resultado estavam disponíveis para todos, ou quase todos, os participantes?", 
+        ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+        help=help_4_2
+    )
+
+# Verifica integridade (Lógica mantida)
 missing_data = False
 triagem_complete = False
 
@@ -912,10 +939,12 @@ analysis_type = "NONE"
 
 if triagem_complete and missing_data:
     st.divider()
+    help_4_4 = """A forma como o risco de viés é avaliado depende de ter sido realizada uma análise de casos completos. Uma análise de casos completos é aquela que se restringe aos participantes com dados completos sobre todas as variáveis de intervenção, desfecho e fatores de confusão."""
+    
     q4_4 = st.selectbox(
-        "4.4 A análise foi feita apenas com casos completos?",
+        "4.4 O resultado é baseado em uma análise completa do caso?",
         ["Selecione...", "Y", "PY", "PN", "N", "NI"],
-        help="Y/PY/NI: Casos Completos. N/PN: Imputação/Outros."
+        help=help_4_4
     )
 
     if q4_4 in ["Y", "PY", "NI"]:
@@ -929,72 +958,124 @@ if triagem_complete and missing_data:
 if analysis_type == "COMPLETE_CASE":
     st.markdown("**Caminho: Análise de Casos Completos**")
     
+    help_4_5 = """Esta questão visa identificar situações em que uma análise de "casos completos" estará sujeita a viés devido a dados faltantes. Uma análise de casos completos é aquela que inclui todos os participantes que fornecem dados completos para as variáveis envolvidas na análise.
+Uma análise de casos completos pode ser enviesada se a ausência de dados (na intervenção, no desfecho ou nos fatores de confusão) estiver relacionada ao desfecho. Por exemplo, se for provável que participantes com problemas de saúde subjacentes tenham faltado a uma consulta na qual o status da intervenção na linha de base ou os fatores de confusão deveriam ter sido medidos, sua consequente exclusão da análise pode estar relacionada ao seu desfecho final.
+Quatro razões para responder ' S ' ou ' PY ' são:
+(1) Existem diferenças entre os grupos de intervenção ou grupos/níveis de fatores de confusão nas proporções de participantes excluídos da análise devido à falta de dados de desfecho. Para dados de tempo até o evento, a analogia é que as taxas de censura (perda de seguimento) dependem do grupo de intervenção.
+(2) Existem diferenças entre os grupos/níveis de desfecho nas proporções de participantes excluídos da análise devido à falta de dados sobre intervenção/fatores de confusão.
+(3) Os motivos relatados para a ausência de dados sobre os resultados fornecem evidências de que a falta de dados depende do resultado real ou de uma causa para o resultado;
+(4) É razoável supor que as circunstâncias do estudo tornam provável que a ausência de dados no desfecho dependa do seu valor real. Por exemplo, se o desfecho for depressão grave, é provável que os participantes que apresentarem esse desfecho faltem a consultas nas quais ele teria sido registrado.
+Responda ' N ' ou ' PN ' se houver dados faltantes, perda de seguimento ou desistência por motivos documentados e não relacionados ao desfecho, caso em que o risco de viés devido a dados faltantes será baixo."""
+    
     q4_5 = st.selectbox(
-        "4.5 A exclusão está relacionada ao valor real do desfecho (MNAR)?",
-        ["Selecione...", "Y", "PY", "PN", "N", "NI"]
+        "4.5 A exclusão da análise devido a dados faltantes (na intervenção, nos fatores de confusão ou no desfecho) provavelmente estava relacionada ao valor verdadeiro do desfecho?",
+        ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+        help=help_4_5
     )
     
-    # Lógica Sequencial: 4.6 só aparece se 4.5 for Y/PY/NI (Caminho de Risco)
-    # Se 4.5 for N/PN, o risco já é baixo, não mostra mais nada.
+    # Lógica Sequencial mantida
     if q4_5 in ["Y", "PY", "NI"]:
+        help_4_6 = """Se todas as variáveis que plausivelmente explicam a relação entre o desfecho e a ausência de dados (na intervenção, nos fatores de confusão ou no próprio desfecho) forem incluídas na análise de casos completos, o risco de viés será baixo. Por exemplo, em uma regressão da pressão arterial aos 55 anos (desfecho) sobre a redução da ingestão de sal (intervenção), ajustada para os fatores de confusão sexo, nível de escolaridade e pressão arterial medida aos 25 anos, se as mulheres tivessem maior probabilidade de ter a pressão arterial medida aos 25 anos e se o sexo fosse a única variável plausivelmente relacionada à ausência de dados, isso não causaria viés, pois o sexo já está ajustado no modelo de análise. Portanto, a pressão arterial aos 55 anos não está relacionada à ausência de dados na pressão arterial aos 25 anos, após o ajuste para o sexo.
+Nota técnica: Se um mediador (uma variável na via causal da intervenção ao desfecho) afetar a ausência de dados, o ajuste para essa variável seria apropriado para evitar viés devido a dados faltantes em uma análise de casos completos, mas alteraria o efeito da intervenção estimado. Na presença de tais variáveis, a imputação múltipla (ver questão 4.7) deve ser usada para lidar com o viés devido a dados faltantes. O ajuste para um mediador aumentará o risco de viés devido a fatores de confusão (domínio 1)."""
+        
         q4_6 = st.selectbox(
-            "4.6 A relação entre perda e desfecho é explicada pelo modelo?",
-            ["Selecione...", "Y", "PY", "WN", "NI", "SN"]
+            "4.6 É provável que a relação entre o resultado e a ausência de dados seja explicada pelas variáveis no modelo de análise?",
+            ["Selecione...", "Y", "PY", "WN", "NI", "SN"],
+            help=help_4_6
         )
         
-        # Lógica Sequencial: 4.11 só aparece se 4.6 for respondido
+        # Lógica Sequencial mantida
         if q4_6 != "Selecione...":
+            help_4_11 = """A evidência de que o resultado não foi enviesado por dados faltantes pode vir de:
+(1) métodos de análise que não seriam tendenciosos sob relações plausíveis entre os valores ausentes e a probabilidade de que os dados estejam ausentes; ou
+(2) Análises de sensibilidade mostram que os resultados sofrem poucas alterações sob uma série de suposições plausíveis sobre os valores ausentes.
+Note que a imputação múltipla baseada apenas em informações sobre desfecho, intervenção e fatores de confusão não deve ser considerada suficiente para corrigir o viés devido a dados faltantes, portanto, a similaridade entre os resultados com e sem essa imputação não deve ser interpretada como garantia ao responder a esta questão. Da mesma forma, não se deve presumir que uma análise ponderada corrija o viés devido a dados faltantes sem uma análise mais aprofundada dos itens (1) e (2) acima, ou sem análises de sensibilidade."""
+            
             q4_11 = st.selectbox(
-                "4.11 Existe evidência de que o resultado não é enviesado?",
-                ["Selecione...", "Y", "PY", "PN", "N", "NI"]
+                "4.11 Há evidências de que o resultado não foi enviesado por dados faltantes?",
+                ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+                help=help_4_11
             )
 
 # >>> RAMO B: IMPUTAÇÃO / OUTROS <<<
 elif analysis_type == "IMPUTATION_OR_OTHER":
     st.markdown("**Caminho: Imputação ou Outros Métodos**")
     
+    help_4_7 = """A imputação de valores ausentes é o processo de atribuir valores estimados ou presumidos a esses valores para uso na análise principal.
+Responda 'S' ou 'PP' se a análise foi baseada em imputação simples ou múltipla."""
+    
     q4_7 = st.selectbox(
-        "4.7 A análise foi baseada em imputação de valores?",
-        ["Selecione...", "Y", "PY", "PN", "N", "NI"]
+        "4.7 A análise foi baseada na imputação de valores ausentes?",
+        ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+        help=help_4_7
     )
     
     # Sub-Ramo B1: Imputação
     if q4_7 in ["Y", "PY"]:
+        help_4_8 = """Em seu livro Análise estatística com dados faltantes (Wiley 2002), Little e Rubin propuseram categorizações comumente usadas para dados faltantes. Estas foram resumidas por Sterne et al (BMJ 2009; 338 : b2393) da seguinte forma:
+Dados faltantes completamente ao acaso (MCAR): Não há diferenças sistemáticas entre os valores faltantes e os valores observados. Por exemplo, as medições da pressão arterial podem estar faltando devido à falha de um esfigmomanômetro automático.
+Dados faltantes aleatoriamente (MAR): qualquer diferença sistemática entre os valores faltantes e os valores observados pode ser explicada por diferenças nos dados observados. Por exemplo, as medições de pressão arterial faltantes podem ser menores do que as medições realizadas, mas apenas porque pessoas mais jovens podem ter maior probabilidade de apresentar medições de pressão arterial faltantes.
+Dados faltantes não aleatórios (MNAR): Mesmo após a consideração dos dados observados , diferenças sistemáticas permanecem entre os valores faltantes e os valores observados. Por exemplo, pessoas com pressão alta podem ter maior probabilidade de faltar a consultas médicas por terem dores de cabeça.
+Análises baseadas em imputação múltipla podem evitar viés devido a dados faltantes, desde que as variáveis incompletas para as quais os dados são imputados sejam MAR ou MCAR, mas não se os dados forem MNAR.
+Responda ' N ' ou ' PN ' se houver motivo para acreditar que os dados estão faltando de forma não aleatória (MNAR). Caso contrário, responda ' Y ' ou ' PY '."""
+        
         q4_8 = st.selectbox(
-            "4.8 As premissas MAR/MCAR são razoáveis?",
-            ["Selecione...", "Y", "PY", "PN", "N", "NI"]
+            "4.8 É razoável assumir que os dados estavam 'faltando aleatoriamente' (MAR) ou 'faltando completamente aleatoriamente' (MCAR) ?",
+            ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+            help=help_4_8
         )
         
-        # Lógica Sequencial: 4.9 só aparece se 4.8 for Y/PY (Se for N/PN/NI encerra como Sério)
+        # Lógica Sequencial mantida
         if q4_8 in ["Y", "PY"]:
+            help_4_9 = """Responda ' SN ' ou ' WN ' se forem utilizados métodos de imputação simples, como a última observação levada adiante ou a imputação da média. O grau de viés que isso provavelmente introduzirá dependerá da proporção de participantes com dados faltantes.
+Responda ' S ' ou ' PP ' se a imputação múltipla foi usada e (i) todos os preditores de dados faltantes em qualquer variável foram incluídos nos modelos de imputação; e (ii) todas as variáveis no modelo usado para a análise principal foram incluídas nos modelos de imputação."""
+            
             q4_9 = st.selectbox(
-                "4.9 A imputação foi apropriada?",
-                ["Selecione...", "Y", "PY", "WN", "NI", "SN"]
+                "4.9 A imputação foi realizada adequadamente?",
+                ["Selecione...", "Y", "PY", "WN", "NI", "SN"],
+                help=help_4_9
             )
             
-            # Lógica Sequencial: 4.11 só aparece se 4.9 indicar problema (WN/NI/SN)
+            # Lógica Sequencial mantida
             if q4_9 in ["WN", "NI", "SN"]:
+                # Reutilizando help_4_11 pois é o mesmo texto para todos os casos
+                help_4_11 = """A evidência de que o resultado não foi enviesado por dados faltantes pode vir de:
+(1) métodos de análise que não seriam tendenciosos sob relações plausíveis entre os valores ausentes e a probabilidade de que os dados estejam ausentes; ou
+(2) Análises de sensibilidade mostram que os resultados sofrem poucas alterações sob uma série de suposições plausíveis sobre os valores ausentes.
+Note que a imputação múltipla baseada apenas em informações sobre desfecho, intervenção e fatores de confusão não deve ser considerada suficiente para corrigir o viés devido a dados faltantes, portanto, a similaridade entre os resultados com e sem essa imputação não deve ser interpretada como garantia ao responder a esta questão. Da mesma forma, não se deve presumir que uma análise ponderada corrija o viés devido a dados faltantes sem uma análise mais aprofundada dos itens (1) e (2) acima, ou sem análises de sensibilidade."""
+                
                 q4_11 = st.selectbox(
-                    "4.11 Existe evidência de que o resultado não é enviesado?",
-                    ["Selecione...", "Y", "PY", "PN", "N", "NI"]
+                    "4.11 Há evidências de que o resultado não foi enviesado por dados faltantes?",
+                    ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+                    help=help_4_11
                 )
 
     # Sub-Ramo B2: Outros Métodos
     elif q4_7 in ["N", "PN", "NI"]:
+        help_4_10 = """Esta questão de sinalização abrange situações em que a análise não foi uma análise de casos completos nem se baseou na imputação de valores ausentes. Exemplos de tais análises incluem ponderação por probabilidade inversa e máxima verossimilhança com informação completa. Se for utilizada ponderação, a sua validade depende da especificação correta do modelo de ponderação (ver Seaman e White, Stat Methods Med Res 2013; 22: 278-95).
+Nessas situações, o avaliador do ROBINS-I (possivelmente em conjunto com um estatístico com conhecimento em métodos para lidar com dados faltantes) deve tentar determinar se a análise foi apropriada para corrigir quaisquer vieses."""
+        
         q4_10 = st.selectbox(
-            "4.10 Foi usado outro método apropriado (ex: IPW)?",
-            ["Selecione...", "Y", "PY", "WN", "NI", "SN"]
+            "4.10 Foi utilizado um método alternativo apropriado para corrigir o viés devido a dados faltantes?",
+            ["Selecione...", "Y", "PY", "WN", "NI", "SN"],
+            help=help_4_10
         )
         
-        # Lógica Sequencial: 4.11 só aparece se 4.10 indicar problema (WN/NI/SN)
+        # Lógica Sequencial mantida
         if q4_10 in ["WN", "NI", "SN"]:
+            help_4_11 = """A evidência de que o resultado não foi enviesado por dados faltantes pode vir de:
+(1) métodos de análise que não seriam tendenciosos sob relações plausíveis entre os valores ausentes e a probabilidade de que os dados estejam ausentes; ou
+(2) Análises de sensibilidade mostram que os resultados sofrem poucas alterações sob uma série de suposições plausíveis sobre os valores ausentes.
+Note que a imputação múltipla baseada apenas em informações sobre desfecho, intervenção e fatores de confusão não deve ser considerada suficiente para corrigir o viés devido a dados faltantes, portanto, a similaridade entre os resultados com e sem essa imputação não deve ser interpretada como garantia ao responder a esta questão. Da mesma forma, não se deve presumir que uma análise ponderada corrija o viés devido a dados faltantes sem uma análise mais aprofundada dos itens (1) e (2) acima, ou sem análises de sensibilidade."""
+            
             q4_11 = st.selectbox(
-                "4.11 Existe evidência de que o resultado não é enviesado?",
-                ["Selecione...", "Y", "PY", "PN", "N", "NI"]
+                "4.11 Há evidências de que o resultado não foi enviesado por dados faltantes?",
+                ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+                help=help_4_11
             )
 
 
-# --- ALGORITMO DE DECISÃO (Mapeamento Exato dos Caminhos Solicitados) ---
+# --- ALGORITMO DE DECISÃO (LÓGICA INTACTA) ---
 d4_risk = "PENDENTE"
 d4_reason = "Responda as perguntas sequenciais..."
 
