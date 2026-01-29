@@ -1223,29 +1223,134 @@ report_data["domains"]["Domínio 4"] = {
 display_risk_card("Domínio 4", d4_risk, d4_reason)
 st.divider()
 
-# --- DOMÍNIO 5: MEDIÇÃO ---
-st.header("Domínio 5: Medição do Desfecho")
-c1, c2 = st.columns(2)
-with c1:
-    q5_1 = st.selectbox("5.1 Métodos diferem entre grupos?", ["Selecione...", "Y", "PY", "PN", "N", "NI"])
-    q5_2 = st.selectbox("5.2 Avaliadores cientes da intervenção?", ["Selecione...", "Y", "PY", "PN", "N", "NI"])
-with c2:
-    q5_3 = st.selectbox("5.3 Avaliação influenciada pelo conhecimento?", ["Selecione...", "NA", "SY", "WY", "PN", "N", "NI"])
+# --- DOMÍNIO 5: MENSURAÇÃO DO DESFECHO ---
+st.header("Domínio 5: Viés na Mensuração do Desfecho")
 
-d5_risk, d5_reason = "PENDENTE", "Aguardando respostas..."
-if "Selecione..." not in [q5_1, q5_2, q5_3]:
-    if q5_1 in ["Y", "PY"]: d5_risk, d5_reason = "SERIOUS", "Métodos de medição diferentes entre os grupos."
-    elif q5_2 in ["Y", "PY", "NI"]:
-        if q5_3 == "SY": d5_risk, d5_reason = "SERIOUS", "Avaliação subjetiva influenciada pelo conhecimento da intervenção."
-        elif q5_3 in ["WY", "NI"]: d5_risk, d5_reason = "MODERATE", "Possível influência no avaliador."
-        else: d5_risk, d5_reason = "LOW", "Avaliador ciente, mas desfecho objetivo."
-    else:
-        if q5_1 == "NI": d5_risk, d5_reason = "MODERATE", "Avaliador cego, mas incerteza sobre comparabilidade dos métodos."
-        else: d5_risk, d5_reason = "LOW", "Medição objetiva e comparável."
+st.markdown("""
+Este domínio avalia se a forma como os desfechos foram medidos ou verificados introduziu viés.
+**As perguntas aparecerão sequencialmente.**
+""")
 
+# Inicialização de variáveis
+q5_1, q5_2, q5_3 = "Selecione...", "Selecione...", "Selecione..."
+d5_risk = "PENDENTE"
+d5_reason = "Aguardando respostas..."
+
+# --- 5.1 (Sempre visível) ---
+help_5_1 = """Métodos comparáveis de mensuração de desfechos (coleta de dados) envolvem os mesmos métodos e limiares de mensuração, utilizados em momentos comparáveis. Diferenças entre os grupos de intervenção podem surgir devido ao " viés de detecção diagnóstica" no contexto da coleta passiva de dados de desfecho, ou se uma intervenção envolver visitas adicionais a um profissional de saúde, levando a oportunidades adicionais para a identificação de eventos de desfecho."""
+
+q5_1 = st.selectbox(
+    "5.1 A medição ou a verificação do resultado poderiam ter diferido entre os grupos de intervenção?",
+    ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+    help=help_5_1
+)
+
+# Lógica Sequencial: 5.2 só aparece se 5.1 não for risco imediato (Y/PY) e tiver sido respondido
+show_5_2 = False
+if q5_1 in ["N", "PN", "NI"]:
+    show_5_2 = True
+elif q5_1 in ["Y", "PY"]:
+    # Hard Stop: Risco Sério imediato (conforme algoritmo "5.1 Y/PY --> serio risco")
+    d5_risk = "SERIOUS"
+    d5_reason = "Métodos de medição diferentes entre grupos (5.1 Y/PY)."
+
+# --- 5.2 ---
+if show_5_2:
+    help_5_2 = """Responda ' N ' se os avaliadores de desfecho desconheciam o status da intervenção. Em outras situações, os avaliadores de desfecho podem desconhecer as intervenções recebidas pelos participantes, mesmo que não haja cegamento ativo por parte dos investigadores do estudo; a resposta a esta pergunta também seria ' N '. Em estudos em que os participantes relatam seus próprios desfechos, por exemplo, em um questionário, o avaliador de desfecho é o próprio participante do estudo. Em um estudo observacional, a resposta a esta pergunta geralmente será ' S ' quando os participantes relatam seus próprios desfechos."""
+    
+    q5_2 = st.selectbox(
+        "5.2 Os avaliadores de resultados estavam cientes da intervenção recebida pelos participantes do estudo?",
+        ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+        help=help_5_2
+    )
+
+# Lógica Sequencial: 5.3 só aparece se 5.2 for Y/PY/NI
+show_5_3 = False
+if show_5_2 and q5_2 in ["Y", "PY", "NI"]:
+    show_5_3 = True
+
+# --- 5.3 ---
+if show_5_3:
+    help_5_3 = """O conhecimento da intervenção atribuída pode influenciar os resultados relatados pelos participantes (como o nível de dor), os resultados relatados pelos observadores que envolvem algum julgamento e os resultados das decisões do profissional responsável pela intervenção.
+o conhecimento da intervenção atribuída influencie os resultados relatados pelos observadores que não envolvam julgamento, como, por exemplo, a mortalidade por todas as causas ou as medições laboratoriais dos níveis de substâncias no sangue.
+As opções de resposta distinguem entre situações em que (i) o conhecimento do estado da intervenção poderia ter influenciado a avaliação do resultado, mas não há razão para acreditar que o tenha feito, e situações em que (ii) o conhecimento do estado da intervenção provavelmente influenciou a avaliação do resultado. Quando há fortes níveis de crença ou preferência por efeitos benéficos ou prejudiciais da intervenção, é mais provável que o resultado tenha sido influenciado pelo conhecimento da intervenção recebida. Exemplos que justificam a resposta ' SY ' podem incluir sintomas relatados por pacientes em estudos de homeopatia ou avaliações da recuperação da função por um fisioterapeuta."""
+    
+    q5_3 = st.selectbox(
+        "5.3 A avaliação do resultado poderia ter sido influenciada pelo conhecimento da intervenção recebida?",
+        ["Selecione...", "Y", "PY", "PN", "N", "NI"], # Mapeamento visual: Y=SY, PY=WY
+        help=help_5_3
+    )
+
+# --- CÁLCULO DE RISCO (ALGORITMO FIEL) ---
+
+# Verifica se podemos calcular (Fluxo completo ou Hard Stop)
+ready_to_calc = False
+
+if d5_risk == "SERIOUS": # Já definido pelo Hard Stop de 5.1
+    ready_to_calc = False # Já temos o resultado, não precisa recalcular
+
+elif q5_1 != "Selecione...":
+    # Caminho sem 5.3 (5.2 foi N/PN)
+    if q5_2 in ["N", "PN"]:
+        ready_to_calc = True
+    # Caminho com 5.3 (5.2 foi Y/PY/NI)
+    elif q5_2 in ["Y", "PY", "NI"] and q5_3 != "Selecione...":
+        ready_to_calc = True
+
+
+if ready_to_calc:
+    # NOTA DE MAPEAMENTO:
+    # O prompt usa SY (Strong Yes) -> Mapeamos para Y
+    # O prompt usa WY (Weak Yes) -> Mapeamos para PY
+    
+    # --- BAIXO RISCO (Verde) ---
+    # 5.1 N/PN --> 5.2 N/PN
+    if q5_1 in ["N", "PN"] and q5_2 in ["N", "PN"]:
+        d5_risk = "LOW"
+        d5_reason = "Medição comparável e avaliadores cegos/não influenciados."
+        
+    # 5.1 N/PN --> 5.2 Y/PY/NI --> 5.3 N/PN
+    elif q5_1 in ["N", "PN"] and q5_2 in ["Y", "PY", "NI"] and q5_3 in ["N", "PN"]:
+        d5_risk = "LOW"
+        d5_reason = "Avaliadores cientes, mas avaliação não influenciada."
+
+    # --- RISCO MODERADO ---
+    # 5.1 N/PN --> 5.2 Y/PY/NI --> 5.3 WY(PY)/NI
+    elif q5_1 in ["N", "PN"] and q5_2 in ["Y", "PY", "NI"] and q5_3 in ["PY", "NI"]:
+        d5_risk = "MODERATE"
+        d5_reason = "Possível influência do conhecimento da intervenção na avaliação."
+
+    # 5.1 NI --> 5.2 N/PN
+    elif q5_1 == "NI" and q5_2 in ["N", "PN"]:
+        d5_risk = "MODERATE"
+        d5_reason = "Sem informação sobre comparabilidade da medição (5.1 NI)."
+
+    # 5.1 NI --> 5.2 Y/PY/NI --> 5.3 WY(PY)/N/PN/NI
+    elif q5_1 == "NI" and q5_2 in ["Y", "PY", "NI"] and q5_3 in ["PY", "N", "PN", "NI"]:
+        d5_risk = "MODERATE"
+        d5_reason = "Sem informação sobre comparabilidade (5.1 NI) e possível influência."
+
+    # --- RISCO SÉRIO ---
+    # 5.1 Y/PY (Já tratado no início do código, mas reforçando lógica)
+    elif q5_1 in ["Y", "PY"]:
+        d5_risk = "SERIOUS"
+        d5_reason = "Métodos de medição diferem entre os grupos."
+
+    # 5.1 N/PN/NI --> 5.2 Y/PY/NI --> 5.3 SY(Y)
+    elif q5_1 in ["N", "PN", "NI"] and q5_2 in ["Y", "PY", "NI"] and q5_3 == "Y":
+        d5_risk = "SERIOUS"
+        d5_reason = "Avaliação do desfecho fortemente influenciada (SY) pelo conhecimento da intervenção."
+
+# Salva nos dados globais
 risks["D5"] = d5_risk
 reasons["D5"] = d5_reason
-report_data["domains"]["Domínio 5"] = {"risk": d5_risk, "reason": d5_reason, "answers": {"5.1": q5_1, "5.2": q5_2, "5.3": q5_3}}
+
+report_data["domains"]["Domínio 5"] = {
+    "risk": d5_risk, 
+    "reason": d5_reason, 
+    "answers": {"5.1": q5_1, "5.2": q5_2, "5.3": q5_3}
+}
+
 display_risk_card("Domínio 5", d5_risk, d5_reason)
 st.divider()
 
