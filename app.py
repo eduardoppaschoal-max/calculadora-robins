@@ -1223,7 +1223,7 @@ report_data["domains"]["Domínio 4"] = {
 display_risk_card("Domínio 4", d4_risk, d4_reason)
 st.divider()
 
-# --- DOMÍNIO 5: MENSURAÇÃO DO DESFECHO ---
+# --- DOMÍNIO 5: MENSURAÇÃO DO DESFECHO (Opções WY/SY incluídas) ---
 st.header("Domínio 5: Viés na Mensuração do Desfecho")
 
 st.markdown("""
@@ -1250,7 +1250,7 @@ show_5_2 = False
 if q5_1 in ["N", "PN", "NI"]:
     show_5_2 = True
 elif q5_1 in ["Y", "PY"]:
-    # Hard Stop: Risco Sério imediato (conforme algoritmo "5.1 Y/PY --> serio risco")
+    # Hard Stop: Risco Sério imediato
     d5_risk = "SERIOUS"
     d5_reason = "Métodos de medição diferentes entre grupos (5.1 Y/PY)."
 
@@ -1275,19 +1275,20 @@ if show_5_3:
 o conhecimento da intervenção atribuída influencie os resultados relatados pelos observadores que não envolvam julgamento, como, por exemplo, a mortalidade por todas as causas ou as medições laboratoriais dos níveis de substâncias no sangue.
 As opções de resposta distinguem entre situações em que (i) o conhecimento do estado da intervenção poderia ter influenciado a avaliação do resultado, mas não há razão para acreditar que o tenha feito, e situações em que (ii) o conhecimento do estado da intervenção provavelmente influenciou a avaliação do resultado. Quando há fortes níveis de crença ou preferência por efeitos benéficos ou prejudiciais da intervenção, é mais provável que o resultado tenha sido influenciado pelo conhecimento da intervenção recebida. Exemplos que justificam a resposta ' SY ' podem incluir sintomas relatados por pacientes em estudos de homeopatia ou avaliações da recuperação da função por um fisioterapeuta."""
     
+    # Adicionadas as opções SY e WY conforme solicitado
     q5_3 = st.selectbox(
         "5.3 A avaliação do resultado poderia ter sido influenciada pelo conhecimento da intervenção recebida?",
-        ["Selecione...", "Y", "PY", "PN", "N", "NI"], # Mapeamento visual: Y=SY, PY=WY
+        ["Selecione...", "Y", "SY", "PY", "WY", "PN", "N", "NI"], 
         help=help_5_3
     )
 
-# --- CÁLCULO DE RISCO (ALGORITMO FIEL) ---
+# --- CÁLCULO DE RISCO (COM SY e WY) ---
 
 # Verifica se podemos calcular (Fluxo completo ou Hard Stop)
 ready_to_calc = False
 
 if d5_risk == "SERIOUS": # Já definido pelo Hard Stop de 5.1
-    ready_to_calc = False # Já temos o resultado, não precisa recalcular
+    ready_to_calc = False 
 
 elif q5_1 != "Selecione...":
     # Caminho sem 5.3 (5.2 foi N/PN)
@@ -1299,9 +1300,6 @@ elif q5_1 != "Selecione...":
 
 
 if ready_to_calc:
-    # NOTA DE MAPEAMENTO:
-    # O prompt usa SY (Strong Yes) -> Mapeamos para Y
-    # O prompt usa WY (Weak Yes) -> Mapeamos para PY
     
     # --- BAIXO RISCO (Verde) ---
     # 5.1 N/PN --> 5.2 N/PN
@@ -1315,29 +1313,29 @@ if ready_to_calc:
         d5_reason = "Avaliadores cientes, mas avaliação não influenciada."
 
     # --- RISCO MODERADO ---
-    # 5.1 N/PN --> 5.2 Y/PY/NI --> 5.3 WY(PY)/NI
-    elif q5_1 in ["N", "PN"] and q5_2 in ["Y", "PY", "NI"] and q5_3 in ["PY", "NI"]:
+    # Regra: 5.3 WY/NI (PY também entra aqui por segurança)
+    elif q5_1 in ["N", "PN"] and q5_2 in ["Y", "PY", "NI"] and q5_3 in ["PY", "WY", "NI"]:
         d5_risk = "MODERATE"
         d5_reason = "Possível influência do conhecimento da intervenção na avaliação."
 
-    # 5.1 NI --> 5.2 N/PN
+    # Regra: 5.1 NI --> 5.2 N/PN
     elif q5_1 == "NI" and q5_2 in ["N", "PN"]:
         d5_risk = "MODERATE"
         d5_reason = "Sem informação sobre comparabilidade da medição (5.1 NI)."
 
-    # 5.1 NI --> 5.2 Y/PY/NI --> 5.3 WY(PY)/N/PN/NI
-    elif q5_1 == "NI" and q5_2 in ["Y", "PY", "NI"] and q5_3 in ["PY", "N", "PN", "NI"]:
+    # Regra: 5.1 NI --> 5.2 Y/PY/NI --> 5.3 WY/N/PN/NI
+    elif q5_1 == "NI" and q5_2 in ["Y", "PY", "NI"] and q5_3 in ["PY", "WY", "N", "PN", "NI"]:
         d5_risk = "MODERATE"
         d5_reason = "Sem informação sobre comparabilidade (5.1 NI) e possível influência."
 
     # --- RISCO SÉRIO ---
-    # 5.1 Y/PY (Já tratado no início do código, mas reforçando lógica)
+    # 5.1 Y/PY
     elif q5_1 in ["Y", "PY"]:
         d5_risk = "SERIOUS"
         d5_reason = "Métodos de medição diferem entre os grupos."
 
-    # 5.1 N/PN/NI --> 5.2 Y/PY/NI --> 5.3 SY(Y)
-    elif q5_1 in ["N", "PN", "NI"] and q5_2 in ["Y", "PY", "NI"] and q5_3 == "Y":
+    # Regra: 5.3 SY (Y também entra aqui)
+    elif q5_1 in ["N", "PN", "NI"] and q5_2 in ["Y", "PY", "NI"] and q5_3 in ["Y", "SY"]:
         d5_risk = "SERIOUS"
         d5_reason = "Avaliação do desfecho fortemente influenciada (SY) pelo conhecimento da intervenção."
 
