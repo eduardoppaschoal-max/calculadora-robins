@@ -1351,63 +1351,242 @@ report_data["domains"]["Domínio 5"] = {
 display_risk_card("Domínio 5", d5_risk, d5_reason)
 st.divider()
 
-# --- DOMÍNIO 6: RELATO SELETIVO ---
-st.header("Domínio 6: Relato Seletivo")
-c1, c2 = st.columns(2)
-with c1:
-    q6_1 = st.selectbox("6.1 Relatado conforme plano prévio?", ["Selecione...", "Y", "PY", "PN", "N", "NI"])
-    q6_2 = st.selectbox("6.2 Seleção baseada em múltiplas medidas?", ["Selecione...", "Y", "PY", "PN", "N", "NI"])
-with c2:
-    q6_3 = st.selectbox("6.3 Seleção baseada em múltiplas análises?", ["Selecione...", "Y", "PY", "PN", "N", "NI"])
-    q6_4 = st.selectbox("6.4 Seleção baseada em subgrupos?", ["Selecione...", "Y", "PY", "PN", "N", "NI"])
+# --- DOMÍNIO 6: SELEÇÃO DO RESULTADO RELATADO ---
+st.header("Domínio 6: Viés na seleção do resultado relatado")
 
-d6_risk, d6_reason = "PENDENTE", "Aguardando respostas..."
-if "Selecione..." not in [q6_1, q6_2, q6_3, q6_4]:
-    if q6_1 in ["Y", "PY"]: d6_risk, d6_reason = "LOW", "Seguiu plano de análise pré-especificado."
+st.markdown("""
+Este domínio avalia se o resultado relatado foi selecionado de forma enviesada a partir de múltiplas análises ou medidas possíveis.
+**As perguntas aparecerão sequencialmente conforme necessário.**
+""")
+
+# Inicialização de variáveis
+q6_1 = "Selecione..."
+q6_2, q6_3, q6_4 = "Selecione...", "Selecione...", "Selecione..."
+d6_risk = "PENDENTE"
+d6_reason = "Aguardando respostas..."
+
+# --- 6.1 (Sempre visível) ---
+help_6_1 = """Se as intenções pré-especificadas pelos pesquisadores estiverem disponíveis com detalhes suficientes, as medições e análises de desfecho planejadas poderão ser comparadas com aquelas apresentadas no(s) relatório(s) publicado(s). Para evitar a possibilidade de seleção do resultado relatado, a finalização das intenções da análise deve preceder a disponibilização dos dados de desfecho não cegados aos autores do estudo.
+Esses planos de análise raramente são disponibilizados publicamente para estudos não randomizados, portanto é improvável que um estudo seja avaliado como tendo baixo risco de viés nesse domínio."""
+
+q6_1 = st.selectbox(
+    "6.1 O resultado foi relatado de acordo com um plano de análise disponível e predeterminado?",
+    ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+    help=help_6_1
+)
+
+# Lógica Sequencial: Se 6.1 for Y/PY, o risco é Baixo imediatamente.
+# Se for N/PN/NI, abrimos as questões 6.2, 6.3 e 6.4.
+show_details = False
+
+if q6_1 in ["Y", "PY"]:
+    # Caminho direto para Baixo Risco
+    d6_risk = "LOW"
+    d6_reason = "Resultado relatado conforme plano pré-determinado (6.1 Y/PY)."
+    
+elif q6_1 in ["N", "PN", "NI"]:
+    show_details = True
+
+# --- QUESTÕES DETALHADAS (6.2, 6.3, 6.4) ---
+if show_details:
+    st.divider()
+    st.markdown("**Avaliação de Múltiplas Medidas e Análises**")
+    
+    # 6.2
+    help_6_2 = """Um domínio de resultado específico (ou seja, um estado real ou ponto final de interesse) pode ser medido de múltiplas maneiras. Por exemplo, o domínio dor pode ser medido usando múltiplas escalas (como uma escala visual analógica e o Questionário de Dor de McGill), cada uma em múltiplos momentos (como 3, 6 e 12 semanas após o tratamento). Se múltiplas medições forem realizadas, mas apenas uma ou um subconjunto for relatado com base nos resultados (como significância estatística), há um alto risco de viés no resultado totalmente relatado.
+Responda ' S ' ou ' PY ' se :
+Há evidências claras (geralmente obtidas por meio da análise de um protocolo de estudo ou plano de análise estatística) de que um domínio foi mensurado de múltiplas maneiras, mas os dados de apenas uma ou um subconjunto dessas medidas são relatados integralmente (sem justificativa), e o resultado relatado integralmente provavelmente foi selecionado com base nesses resultados. A seleção com base nos resultados surge do desejo de que as descobertas sejam noticiáveis, suficientemente relevantes para merecerem publicação, ou para confirmar uma hipótese prévia. Por exemplo, analistas que têm uma ideia preconcebida, ou interesse pessoal em demonstrar, que uma intervenção é benéfica podem estar inclinados a relatar seletivamente medidas de desfecho que sejam favoráveis à intervenção.
+Responda ' N ' ou ' PN ' se:
+Há evidências claras (geralmente obtidas por meio da análise de um protocolo de estudo ou plano de análise estatística) de que todos os resultados relatados para o domínio de desfecho correspondem a todas as medidas de desfecho pretendidas.
+ou
+Só existe uma forma possível de medir o domínio de resultados (portanto, não há oportunidade de selecionar entre múltiplas medidas).
+ou
+As medições dos resultados são inconsistentes em diferentes relatórios sobre o mesmo estudo, mas os analistas apresentaram a razão para a inconsistência , que não está relacionada à natureza dos resultados.
+Responda 'NI' se:
+As intenções de análise não estão disponíveis, ou não foram relatadas com detalhes suficientes para permitir uma avaliação, e há mais de uma maneira pela qual o domínio de resultados poderia ter sido medido."""
+    
+    q6_2 = st.selectbox(
+        "6.2 Múltiplas medidas de desfecho (por exemplo, escalas, definições, pontos de tempo) dentro do domínio do desfecho?",
+        ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+        help=help_6_2
+    )
+
+    # 6.3
+    help_6_3 = """Devido às limitações do uso de dados de estudos não randomizados para análises de eficácia (necessidade de controlar fatores de confusão, quantidade substancial de dados faltantes, etc. ), os analistas podem implementar diferentes métodos analíticos para lidar com essas limitações. Exemplos incluem modelos não ajustados e ajustados; uso do valor final versus mudança em relação ao valor basal versus análise de covariância; exploração de diferentes maneiras de definir os grupos de intervenção e controle; transformações de variáveis; conversão de um desfecho em escala contínua para dados categóricos com diferentes pontos de corte; diferentes conjuntos de covariáveis para ajuste; e diferentes estratégias para lidar com dados faltantes. A aplicação de múltiplos métodos gera múltiplas estimativas de efeito para um domínio de desfecho específico. Se múltiplas estimativas forem geradas, mas apenas uma ou um subconjunto for relatado, há o risco de relato seletivo com base nos resultados (por exemplo, significância estatística).
+Responda ' S ' ou ' PY ' se : 
+Há evidências claras (geralmente obtidas por meio da análise de um protocolo de estudo ou plano de análise estatística) de que um domínio foi analisado de múltiplas maneiras, mas os dados de apenas uma ou um subconjunto dessas análises são relatados integralmente (sem justificativa), e o resultado relatado integralmente provavelmente foi selecionado com base nesses resultados. A seleção com base nos resultados surge do desejo de que as descobertas sejam noticiáveis, suficientemente relevantes para merecerem publicação, ou para confirmar uma hipótese prévia. Por exemplo, analistas que têm uma ideia preconcebida ou interesse pessoal em demonstrar que uma intervenção é benéfica podem estar inclinados a relatar seletivamente análises que sejam favoráveis à intervenção. Responda ' N ' ou ' PN ' se :
+Há evidências claras (geralmente obtidas por meio da análise de um protocolo de estudo ou plano de análise estatística) de que todos os resultados relatados para o domínio de desfecho correspondem a todas as análises planejadas.
+ou
+Só existe uma forma possível de analisar o domínio de resultados (portanto, não há oportunidade de selecionar entre múltiplas análises).
+ou
+As análises são inconsistentes entre diferentes relatórios sobre o mesmo estudo, mas os analistas apresentaram uma justificativa para a inconsistência , que não está relacionada à natureza dos resultados.
+Responda 'NI' se :
+As intenções de análise não estão disponíveis, ou não foram relatadas com detalhes suficientes para permitir uma avaliação, e há mais de uma maneira pela qual o domínio de resultados poderia ter sido analisado."""
+
+    q6_3 = st.selectbox(
+        "6.3 Múltiplas análises dos dados?",
+        ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+        help=help_6_3
+    )
+
+    # 6.4
+    help_6_4 = """Particularmente com grandes coortes frequentemente disponíveis em fontes de dados coletados rotineiramente, é possível gerar múltiplas estimativas de efeito para diferentes subgrupos ou simplesmente omitir proporções variáveis da coorte original. Se múltiplas estimativas forem geradas, mas apenas uma ou um subconjunto delas for relatado, existe o risco de relato seletivo com base nos resultados (por exemplo, significância estatística).
+Responda ' S ' ou ' PY ' se :
+Há evidências claras (geralmente obtidas por meio da análise do protocolo do estudo ou do plano de análise estatística) de que diferentes subgrupos foram analisados, mas os dados de apenas uma ou parte das análises são relatados integralmente (sem justificativa), e o resultado relatado integralmente provavelmente foi selecionado com base nesses resultados. A seleção com base nos resultados surge do desejo de que as descobertas sejam noticiáveis, suficientemente relevantes para merecerem publicação ou para confirmar uma hipótese prévia. Por exemplo, analistas que têm uma ideia preconcebida ou um interesse pessoal em demonstrar que uma intervenção é benéfica podem estar inclinados a relatar resultados seletivamente para subgrupos que sejam favoráveis à intervenção. Responda ' N ' ou ' PN ' se :
+Há evidências claras (geralmente obtidas por meio da análise de um protocolo de estudo ou plano de análise estatística com data anterior ao acesso do analista aos dados coletados ) de que todos os resultados relatados para os subgrupos correspondem a todas as análises planejadas.
+ou
+As análises são inconsistentes entre diferentes relatórios sobre o mesmo estudo, mas os analistas apresentaram uma justificativa para a inconsistência , que não está relacionada à natureza dos resultados.
+Responda 'NI' se :
+As intenções de análise não estão disponíveis, ou não foram relatadas com detalhes suficientes para permitir uma avaliação, e há mais de uma maneira pela qual os subgrupos poderiam ter sido analisados."""
+
+    q6_4 = st.selectbox(
+        "6.4 Múltiplos subgrupos ?",
+        ["Selecione...", "Y", "PY", "PN", "N", "NI"],
+        help=help_6_4
+    )
+
+
+# --- CÁLCULO DE RISCO (ALGORITMO) ---
+
+# Verifica se podemos calcular (Fluxo completo)
+ready_to_calc = False
+
+if d6_risk == "LOW" and q6_1 in ["Y", "PY"]:
+    # Já calculado no passo 1
+    ready_to_calc = False 
+elif show_details and "Selecione..." not in [q6_2, q6_3, q6_4]:
+    ready_to_calc = True
+
+if ready_to_calc:
+    # Agrupa respostas das sub-questões
+    sub_answers = [q6_2, q6_3, q6_4]
+    
+    # Contadores
+    count_ypy = sum(1 for a in sub_answers if a in ["Y", "PY"])
+    count_ni = sum(1 for a in sub_answers if a == "NI")
+    count_npn = sum(1 for a in sub_answers if a in ["N", "PN"])
+    
+    # --- Lógica de Decisão (Baseada no Algoritmo Fornecido) ---
+    
+    # 1. RISCO CRÍTICO (Precedência mais alta: Two or more Y/PY)
+    # Regra: 6.1 N/PN/NI --> 6.2, 6.3, 6.4 Two or more Y/PY --> risco crítico
+    if count_ypy >= 2:
+        d6_risk = "CRITICAL"
+        d6_reason = "Evidência forte de seleção de resultados em múltiplos aspectos (>=2 Y/PY)."
+
+    # 2. RISCO SÉRIO
+    # Regra: 6.1 N/PN/NI --> 6.2, 6.3, 6.4 One Y/PY or all NI --> risco serio
+    elif count_ypy == 1 or count_ni == 3:
+        d6_risk = "SERIOUS"
+        if count_ni == 3:
+            d6_reason = "Ausência total de informações sobre intenções de análise (Todos NI)."
+        else:
+            d6_reason = "Evidência de seleção de resultado em um aspecto (1 Y/PY)."
+
+    # 3. RISCO BAIXO
+    # Regra: 6.1 N/PN/NI --> 6.2, 6.3, 6.4 All N/PN --> baixo risco
+    elif count_npn == 3: # (Implica count_ypy == 0 e count_ni == 0)
+        d6_risk = "LOW"
+        d6_reason = "Sem evidência de seleção de resultados (Todos N/PN)."
+
+    # 4. RISCO MODERADO
+    # Regra: 6.1 N/PN/NI --> 6.2, 6.3, 6.4 At least one NI but none Y/PY --> risco moderado
+    elif count_ypy == 0 and count_ni >= 1:
+        d6_risk = "MODERATE"
+        d6_reason = "Falta de informação em pelo menos um aspecto (NI), sem evidência clara de seleção (Sem Y/PY)."
+
+    # Fallback de segurança
     else:
-        count_selection = 0
-        if q6_2 in ["Y", "PY"]: count_selection += 1
-        if q6_3 in ["Y", "PY"]: count_selection += 1
-        if q6_4 in ["Y", "PY"]: count_selection += 1
-        
-        count_ni = 0
-        if q6_2 == "NI": count_ni += 1
-        if q6_3 == "NI": count_ni += 1
-        if q6_4 == "NI": count_ni += 1
+        d6_risk = "MODERATE"
+        d6_reason = "Combinação de respostas inconclusiva (Risco Moderado por padrão)."
 
-        if count_selection >= 2: d6_risk, d6_reason = "CRITICAL", "Fortes evidências de seleção de resultados (P-hacking) em múltiplos aspectos."
-        elif count_selection == 1: d6_risk, d6_reason = "SERIOUS", "Evidência de seleção em um aspecto (medida, análise ou subgrupo)."
-        elif count_ni == 3: d6_risk, d6_reason = "SERIOUS", "Sem plano de análise e sem informação suficiente para julgar seleção."
-        elif count_ni > 0: d6_risk, d6_reason = "MODERATE", "Sem plano de análise e algumas informações faltando."
-        else: d6_risk, d6_reason = "MODERATE", "Sem plano de análise, mas sem evidências claras de seleção."
-
+# Salva nos dados globais
 risks["D6"] = d6_risk
 reasons["D6"] = d6_reason
-report_data["domains"]["Domínio 6"] = {"risk": d6_risk, "reason": d6_reason, "answers": {"6.1": q6_1, "6.2": q6_2, "6.3": q6_3, "6.4": q6_4}}
+
+report_data["domains"]["Domínio 6"] = {
+    "risk": d6_risk, 
+    "reason": d6_reason, 
+    "answers": {"6.1": q6_1, "6.2": q6_2, "6.3": q6_3, "6.4": q6_4}
+}
+
 display_risk_card("Domínio 6", d6_risk, d6_reason)
 st.divider()
 
-# --- CÁLCULO GERAL ALGORITMO ---
+# --- CÁLCULO GERAL ALGORITMO (COM TEXTOS INTEGRAIS) ---
 st.header("Julgamento de Risco (Overall)")
 all_risks = list(risks.values())
 algo_risk = "PENDENTE"
 
+# Dicionário com os textos integrais (Baseado na imagem fornecida)
+risk_descriptions = {
+    "LOW": {
+        "julgamento": "Baixo risco de viés, exceto por preocupações com fatores de confusão não controlados.",
+        "interpretacao": "Existe a possibilidade de fatores de confusão não controlados que não foram considerados (dada a natureza observacional do estudo), mas, fora isso, há pouca ou nenhuma preocupação com viés nos resultados."
+    },
+    "MODERATE": {
+        "julgamento": "Risco moderado de viés",
+        "interpretacao": "Existe alguma preocupação com relação ao viés nos resultados, embora não esteja claro se há um risco significativo de viés."
+    },
+    "SERIOUS": {
+        "julgamento": "Risco grave de viés",
+        "interpretacao": "O estudo apresenta alguns problemas importantes: as características do estudo acarretam um sério risco de viés nos resultados."
+    },
+    "CRITICAL": {
+        "julgamento": "Risco crítico de viés",
+        "interpretacao": "O estudo é muito problemático: as características do estudo levantam uma crítica de viés no resultado, de modo que o resultado deve, em geral, ser excluído das sínteses de evidências."
+    }
+}
+
+# Cores para o layout
+risk_colors = {
+    "LOW": "#28a745",      # Verde
+    "MODERATE": "#ffc107", # Amarelo/Laranja (Texto escuro para contraste)
+    "SERIOUS": "#dc3545",  # Vermelho
+    "CRITICAL": "#343a40", # Preto/Cinza Escuro
+    "PENDENTE": "#6c757d"  # Cinza
+}
+
+# Lógica de Cálculo
 if "PENDENTE" in all_risks:
-    st.warning("Responda todos os domínios para ver o cálculo.")
+    st.warning("Responda todos os domínios para ver o cálculo e a interpretação final.")
 else:
-    # Se Domínio 1 estava em construção (N/A), ignoramos ele no cálculo geral por enquanto
+    # Filtra domínios que possam estar como N/A
     valid_risks = [r for r in all_risks if r != "N/A"]
     
-    if "CRITICAL" in valid_risks: algo_risk = "CRITICAL"
-    elif valid_risks.count("SERIOUS") >= 2: algo_risk = "CRITICAL"
-    elif "SERIOUS" in valid_risks: algo_risk = "SERIOUS"
-    elif valid_risks.count("MODERATE") >= 3: algo_risk = "SERIOUS"
-    elif "MODERATE" in valid_risks: algo_risk = "MODERATE"
-    else: algo_risk = "LOW"
+    # 1. Risco CRÍTICO
+    if "CRITICAL" in valid_risks:
+        algo_risk = "CRITICAL"
+    elif valid_risks.count("SERIOUS") >= 2:
+        algo_risk = "CRITICAL"
+        
+    # 2. Risco SÉRIO
+    elif "SERIOUS" in valid_risks:
+        algo_risk = "SERIOUS"
+    elif valid_risks.count("MODERATE") >= 3:
+        algo_risk = "SERIOUS"
+        
+    # 3. Risco MODERADO
+    elif "MODERATE" in valid_risks:
+        algo_risk = "MODERATE"
+        
+    # 4. BAIXO
+    else:
+        algo_risk = "LOW"
     
+    # Recupera os textos baseados no risco calculado
+    texts = risk_descriptions.get(algo_risk, {"julgamento": "Erro", "interpretacao": "Erro"})
+    bg_color = risk_colors.get(algo_risk, "gray")
+    text_color = "black" if algo_risk == "MODERATE" else "white" # Ajuste de contraste para o amarelo
+
+    # Exibe o Card Final
     st.markdown(f"""
-    <div style="padding: 15px; background-color: {get_risk_color(algo_risk)}; color: white; text-align: center; border-radius: 8px;">
-        <h3>RISCO SUGERIDO (ALGORITMO): {algo_risk}</h3>
+    <div style="padding: 20px; background-color: {bg_color}; color: {text_color}; border-radius: 10px; margin-top: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <h2 style="text-align: center; margin-top: 0; border-bottom: 1px solid {text_color}; padding-bottom: 10px;">RISCO GLOBAL: {algo_risk}</h2>
+        <div style="margin-top: 15px;">
+            <p><strong>⚖️ Julgamento:</strong><br>{texts['julgamento']}</p>
+            <p><strong>📖 Interpretação:</strong><br>{texts['interpretacao']}</p>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
